@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image
 
 OUT = 'assets/catalog/img'
-SIZE = 192  # px del lado mayor (las miniaturas de la app miden 40-72 dp)
+SIZE = 160  # px del lado mayor (las miniaturas de la app miden 40-72 dp)
 UA = 'HomeStock/1.5 (app personal de inventario; contacto: pablobenlloch.es)'
 
 
@@ -39,7 +39,7 @@ def fetch(pid, url):
             bg = Image.new('RGBA', im.size, (255, 255, 255, 255))
             im = Image.alpha_composite(bg, im).convert('RGB')
             im.thumbnail((SIZE, SIZE), Image.LANCZOS)
-            im.save(out, 'WEBP', quality=68, method=6)
+            im.save(out, 'WEBP', quality=62, method=6)
             return pid, 'ok'
         except Exception as e:  # noqa: BLE001
             err = str(e)
