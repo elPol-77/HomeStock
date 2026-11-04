@@ -37,7 +37,11 @@ interface RawCatalog {
   items: RawItem[];
 }
 
-const CATALOGS: RawCatalog[] = [require('../../../assets/catalog/mercadona.json') as RawCatalog];
+// Para añadir una cadena: deja su JSON en assets/catalog/ y añádelo aquí.
+const CATALOGS: RawCatalog[] = [
+  require('../../../assets/catalog/mercadona.json') as RawCatalog,
+  // CATALOG_SLOT (no borrar: lo usa scripts/catalog para registrar catálogos)
+];
 
 export interface BundledItem {
   id: string;
