@@ -56,8 +56,13 @@ async function callGemini(m: string, body: unknown): Promise<Response> {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return reply(405, { code: 'unknown', message: 'Método no permitido.' });
   if (!GEMINI_KEY) return reply(503, { code: 'not_configured', message: 'El reconocimiento automático aún no está activado en el servidor.' });
+  // Estado: comprueba la clave con Google (listar modelos no gasta cupo) sin revelarla.
+  if (req.method === 'GET') {
+    const m = await pickModel();
+    return reply(m ? 200 : 503, m ? { configured: true, model: m, dailyLimit: DAILY_LIMIT } : { code: 'not_configured', message: 'La clave del servidor no es válida.' });
+  }
+  if (req.method !== 'POST') return reply(405, { code: 'unknown', message: 'Método no permitido.' });
 
   // 1) Usuario con sesión.
   const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
