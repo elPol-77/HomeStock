@@ -40,6 +40,7 @@ interface RawCatalog {
 // Para añadir una cadena: deja su JSON en assets/catalog/ y añádelo aquí.
 const CATALOGS: RawCatalog[] = [
   require('../../../assets/catalog/mercadona.json') as RawCatalog,
+  require('../../../assets/catalog/dia.json') as RawCatalog,
   // CATALOG_SLOT (no borrar: lo usa scripts/catalog para registrar catálogos)
 ];
 
