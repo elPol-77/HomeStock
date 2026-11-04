@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ErrorState, ToastHost } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { ensureHousehold } from '@/data/household';
+import { preparePackImages } from '@/services/catalog/imagePack';
 import { initAuth } from '@/services/auth';
 import { initNotifications } from '@/services/notifications';
 import { useSettings } from '@/services/settings';
@@ -67,6 +68,7 @@ export default function RootLayout() {
         await initNotifications();
         await initAuth();
         startSync();
+        preparePackImages(); // fotos de Consum: se extraen la primera vez, sin bloquear
         startPushRegistration();
         setReady(true);
       } catch (e) {

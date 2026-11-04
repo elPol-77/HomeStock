@@ -33,14 +33,27 @@ interface Target {
   bundledId?: string | null;
 }
 
-function PriceRow({ r, best }: { r: ProductPriceRow; best: boolean }) {
+function PriceRow({ r, best, refUnit = null }: { r: ProductPriceRow; best: boolean; refUnit?: number | null }) {
   const { colors } = useTheme();
+  const alt = r.match === 'alternative';
+  // Diferencia por litro/kg frente al producto buscado (lo que de verdad importa entre tamaños distintos).
+  const diff = alt && refUnit && r.unitPriceValue ? Math.round((1 - r.unitPriceValue / refUnit) * 100) : null;
   return (
     <Row style={{ paddingVertical: 12, alignItems: 'flex-start' }}>
       <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: storeColor(r.store), marginTop: 6 }} />
       <View style={{ flex: 1, gap: 3 }}>
-        <Row gap={6}>
-          <Text variant="bodyStrong">{r.storeLabel}</Text>
+        {alt ? (
+          <Text variant="bodyStrong" numberOfLines={2}>
+            {r.productName}
+          </Text>
+        ) : null}
+        <Row gap={6} style={{ flexWrap: 'wrap' }}>
+          <Text variant={alt ? 'caption' : 'bodyStrong'} color={alt ? 'textMuted' : 'text'}>
+            {r.storeLabel}
+          </Text>
+          {r.ownLabel ? <Badge label="Marca blanca" tone="info" /> : null}
+          {diff != null && diff >= 3 ? <Badge label={`−${diff} % por ${r.unitPriceText?.split('/')[1] ?? 'ud'}`} tone="success" /> : null}
+          {diff != null && diff <= -3 ? <Badge label={`+${-diff} %`} tone="neutral" /> : null}
           {best ? <Badge label="Más barato" tone="success" /> : null}
           {r.isOffer ? <Badge label="Oferta" tone="accent" /> : null}
           {r.source === 'demo' ? <Badge label="DEMO" tone="warning" /> : null}
@@ -49,9 +62,9 @@ function PriceRow({ r, best }: { r: ProductPriceRow; best: boolean }) {
           {PRICE_SOURCE_LABEL[r.source]} · {formatShortDate(r.date)}
           {r.location ? ` · ${r.location}` : ''}
         </Text>
-        {r.match === 'alternative' ? (
-          <Text variant="caption" color="textFaint" numberOfLines={2}>
-            {r.productName} — {r.matchReason}
+        {alt && !r.ownLabel ? (
+          <Text variant="caption" color="textFaint" numberOfLines={1}>
+            {r.matchReason}
           </Text>
         ) : null}
         {r.sourceRef?.startsWith('http') ? (
@@ -137,6 +150,9 @@ export default function ProductPrices() {
   const bestReal = identical.filter((r) => r.source !== 'demo').reduce<ProductPriceRow | null>((b, r) => (!b || r.price < b.price ? r : b), null);
   const bestAny = identical.reduce<ProductPriceRow | null>((b, r) => (!b || r.price < b.price ? r : b), null);
   const altSorted = [...alternatives].sort((a, b) => (a.unitPriceValue ?? Infinity) - (b.unitPriceValue ?? Infinity));
+  // Precio por litro/kg de referencia: el mejor del producto buscado.
+  const refUnit = identical.filter((r) => r.source !== 'demo' && r.unitPriceValue).reduce<number | null>((m, r) => (m == null || r.unitPriceValue! < m ? r.unitPriceValue! : m), null);
+  const cheapestAlt = altSorted.find((a) => a.unitPriceValue != null && refUnit != null && a.unitPriceValue < refUnit * 0.97) ?? null;
 
   return (
     <Screen back bottomInset="safe">
@@ -205,15 +221,24 @@ export default function ProductPrices() {
 
           {altSorted.length > 0 ? (
             <>
-              <SectionTitle title="Alternativas comparables" />
+              <SectionTitle title="Alternativas: otras marcas y marca blanca" />
+              {cheapestAlt && refUnit ? (
+                <Card tone="primary" style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  <Ionicons name="trending-down" size={22} color={colors.success} />
+                  <Text variant="body" style={{ flex: 1 }}>
+                    Con <Text variant="bodyStrong">{cheapestAlt.productName.split(' · ')[0]}</Text> ({cheapestAlt.storeLabel}) pagas un{' '}
+                    <Text variant="bodyStrong">{Math.round((1 - cheapestAlt.unitPriceValue! / refUnit) * 100)} % menos</Text> por {cheapestAlt.unitPriceText?.split('/')[1] ?? 'unidad'}.
+                  </Text>
+                </Card>
+              ) : null}
               <Text variant="caption" color="textMuted">
-                Productos parecidos pero no idénticos (otra marca o tamaño). Compáralos por precio por kg, litro o unidad.
+                El mismo tipo de producto con las mismas características (zero, sin lactosa, sabor…), ordenado por precio por litro, kilo o unidad.
               </Text>
               <Card style={{ gap: 0 }}>
                 {altSorted.map((r, i) => (
                   <View key={`${r.store}-${r.productName}-${i}`}>
                     {i > 0 ? <Divider /> : null}
-                    <PriceRow r={r} best={false} />
+                    <PriceRow r={r} best={false} refUnit={refUnit} />
                   </View>
                 ))}
               </Card>

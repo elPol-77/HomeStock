@@ -1,3 +1,6 @@
+// Las fotos empaquetadas dependen de módulos nativos: aquí basta con saber que no hay.
+jest.mock('@/services/catalog/imagePack', () => ({ packHas: () => false }));
+
 import { bundledCatalogInfo, bundledItems, matchBundled, packagePrice, searchBundled } from '@/services/catalog/bundled';
 
 describe('catálogo incluido de supermercado', () => {
@@ -35,5 +38,32 @@ describe('catálogo incluido de supermercado', () => {
   it('calcula el precio del envase', () => {
     const i = bundledItems().find((x) => x.priceUnit === 'ud');
     expect(packagePrice(i!)).toBe(i!.price);
+  });
+});
+
+describe('alternativas de otras marcas', () => {
+  it('Coca-Cola Zero → marca blanca y Pepsi zero, nunca la normal ni con sabor', () => {
+    const coke = bundledItems().find((i) => i.store === 'consum' && i.name.startsWith('Refresco Cola Zero Botella Coca-cola') && i.format === '2 L');
+    expect(coke).toBeDefined();
+    const res = matchBundled({ name: coke!.name, brand: coke!.brand, pkg: coke!.pkg, bundledId: coke!.id }, 12);
+    const alts = res.filter((m) => m.kind === 'alternative');
+    const names = alts.map((m) => m.item.name);
+    expect(alts.some((m) => m.ownLabel && /cero|zero/i.test(m.item.name))).toBe(true);
+    expect(names.some((n) => /pepsi/i.test(n))).toBe(true);
+    for (const n of names) {
+      expect(n).toMatch(/zero|cero/i);
+      expect(n).not.toMatch(/lima|cherry|vainilla|whisky|sin cafe/i);
+    }
+    // ordenadas por precio por litro
+    const units = alts.map((m) => m.item).map((i) => i.price);
+    expect(units.length).toBeGreaterThan(1);
+  });
+  it('leche entera → otras leches enteras, ninguna desnatada ni sin lactosa', () => {
+    const milk = bundledItems().find((i) => i.store === 'mercadona' && i.name === 'Leche entera Asturiana' && /Brik 1 L/.test(i.format ?? ''));
+    expect(milk).toBeDefined();
+    const alts = matchBundled({ name: milk!.name, brand: milk!.brand, pkg: milk!.pkg, bundledId: milk!.id }, 10).filter((m) => m.kind === 'alternative');
+    expect(alts.length).toBeGreaterThan(0);
+    for (const m of alts) expect(m.item.name.toLowerCase()).not.toMatch(/desnatada|sin lactosa|semi/);
+    expect(alts.some((m) => m.ownLabel)).toBe(true);
   });
 });

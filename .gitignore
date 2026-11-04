@@ -48,3 +48,6 @@ example
 
 # Variables locales (la clave anon es pública, pero cada uno usa su proyecto)
 .env
+
+# Fuentes de las fotos empaquetadas (van dentro de assets/catalog/pack)
+scripts/catalog/data/img_*/

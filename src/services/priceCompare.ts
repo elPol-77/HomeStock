@@ -29,6 +29,8 @@ export interface ProductPriceRow {
   match: 'identical' | 'alternative';
   productName: string;
   matchReason: string;
+  /** Marca propia del súper (marca blanca). */
+  ownLabel?: boolean;
 }
 
 const BUNDLED_DATE = () => bundledCatalogInfo().reduce((d, c) => (c.capturedAt > d ? c.capturedAt : d), '1970-01-01');
@@ -39,7 +41,7 @@ function geoFilter() {
 }
 
 /** Precios conocidos de un producto concreto (por código o id), con alternativas comparables por precio unitario. */
-export async function pricesForProduct(target: { productId?: string | null; barcode?: string | null; name: string; brand?: string | null; pkg?: PackageSize | null; bundledId?: string | null }): Promise<{ rows: ProductPriceRow[]; publicError: string | null }> {
+export async function pricesForProduct(target: { productId?: string | null; barcode?: string | null; name: string; brand?: string | null; pkg?: PackageSize | null; bundledId?: string | null; category?: string | null }): Promise<{ rows: ProductPriceRow[]; publicError: string | null }> {
   const s = settings();
   const since = addDays(todayISO(), -s.priceMaxAgeDays);
   const rows: ProductPriceRow[] = [];
@@ -69,7 +71,7 @@ export async function pricesForProduct(target: { productId?: string | null; barc
   }
 
   // Catálogos de supermercado incluidos en la app (precio con su fecha de captura).
-  for (const m of matchBundled({ ...target, pkg })) {
+  for (const m of matchBundled({ ...target, pkg }, 8)) {
     if (daysBetween(m.item.capturedAt, todayISO()) > s.priceMaxAgeDays) continue;
     const total = packagePrice(m.item);
     const shown = total ?? m.item.price;
@@ -78,7 +80,7 @@ export async function pricesForProduct(target: { productId?: string | null; barc
       store: m.item.store, storeLabel: storeName(m.item.store), price: shown, unitPriceValue: up?.value ?? null,
       unitPriceText: up ? `${up.value.toFixed(2).replace('.', ',')} €/${up.per === 'l' ? 'L' : up.per}` : total == null ? `${m.item.price.toFixed(2).replace('.', ',')} € ${priceUnitLabel(m.item)}` : null,
       isOffer: m.item.isOffer, regularPrice: m.item.regularPrice, date: m.item.capturedAt, location: null, source: 'connector', sourceRef: null,
-      match: m.kind, productName: [m.item.name, m.item.format].filter(Boolean).join(' · '), matchReason: m.reason,
+      match: m.kind, productName: [m.item.name, m.item.format].filter(Boolean).join(' · '), matchReason: m.reason, ownLabel: m.ownLabel,
     });
   }
 

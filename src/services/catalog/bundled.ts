@@ -1,9 +1,11 @@
 import { daysBetween, todayISO } from '@/domain/dates';
-import { compareProducts, stripSize } from '@/domain/matching';
+import { EQUIVALENT_THRESHOLD, isOwnLabel, productType, ProductType, typeSimilarity } from '@/domain/equivalence';
+import { compareProducts } from '@/domain/matching';
 import { normalizeText, tokenize } from '@/domain/text';
-import { PackageSize, parsePackageSize } from '@/domain/units';
+import { PackageSize, parsePackageSize, samePackageSize, unitPrice } from '@/domain/units';
 
 import { BUNDLED_IMAGES } from './bundledImages';
+import { packHas } from './imagePack';
 import type { CatalogProduct } from './types';
 
 /**
@@ -94,7 +96,7 @@ export function bundledItems(): BundledItem[] {
         section: r.s,
         capturedAt: cat.capturedAt,
         sourceNote: cat.source,
-        imageUrl: BUNDLED_IMAGES[r.id] ? `bundled:${r.id}` : (r.i ?? null),
+        imageUrl: BUNDLED_IMAGES[r.id] || packHas(r.id) ? `bundled:${r.id}` : (r.i ?? null),
         barcode: r.e ?? null,
         tokens: tokenize(`${r.n} ${r.s ?? ''}`),
         norm: normalizeText(`${r.n} ${r.f ?? ''}`),
@@ -176,28 +178,100 @@ export interface BundledMatch {
   kind: 'identical' | 'alternative';
   score: number;
   reason: string;
+  /** Marca propia de la cadena (Hacendado, Consum, Dia…). */
+  ownLabel?: boolean;
+  /** Mismo producto (misma marca) pero en otro tamaño. */
+  otherSize?: boolean;
+}
+
+const typeCache = new Map<string, ProductType>();
+function typeOf(item: BundledItem): ProductType {
+  let t = typeCache.get(item.id);
+  if (!t) {
+    t = productType(item.name, item.brand);
+    typeCache.set(item.id, t);
+  }
+  return t;
+}
+
+const normBrand = (b: string | null | undefined) => normalizeText(b ?? '').replace(/[\s.-]/g, '');
+
+/** Precio por kg/L/ud del envase, para ordenar alternativas de distinto tamaño. */
+export function bundledUnitPrice(item: BundledItem): number | null {
+  const total = packagePrice(item);
+  return total != null ? (unitPrice(total, item.pkg)?.value ?? null) : null;
 }
 
 /**
- * Productos del catálogo incluido que corresponden a uno dado: idénticos (mismo nombre, marca y tamaño)
- * y alternativas comparables por precio unitario. Nunca se marca como idéntico algo dudoso.
+ * Lo que puedes comprar en lugar de un producto, en todos los súper del catálogo:
+ *  - idéntico: misma marca, mismo producto y mismo tamaño (la Coca-Cola Zero 2 L en Consum y en DIA);
+ *  - alternativas: el mismo TIPO de producto de otra marca (Pepsi Zero, la cola zero de marca blanca)
+ *    o de la misma marca en otro tamaño, siempre con los mismos atributos (zero, sin lactosa, sabor…).
+ * Las alternativas se ordenan por precio por litro/kg/unidad, que es lo que permite comparar de verdad.
  */
-export function matchBundled(target: { name: string; brand?: string | null; barcode?: string | null; pkg?: PackageSize | null; bundledId?: string | null }, maxAlternatives = 4): BundledMatch[] {
+export function matchBundled(
+  target: { name: string; brand?: string | null; barcode?: string | null; pkg?: PackageSize | null; bundledId?: string | null; category?: string | null },
+  maxAlternatives = 4,
+): BundledMatch[] {
   const out: BundledMatch[] = [];
   const own = target.bundledId ? bundledById(target.bundledId) : undefined;
   if (own) out.push({ item: own, kind: 'identical', score: 1, reason: 'Mismo producto del catálogo' });
-  const tTokens = tokenize(stripSize(target.name)).filter((t) => t.length >= 3);
-  if (tTokens.length === 0) return out;
-  const alts: BundledMatch[] = [];
+  const brand = target.brand ?? own?.brand ?? null;
+  const tType = own ? typeOf(own) : productType(target.name, brand);
+  const category = target.category ?? own?.category ?? null;
+  const tBrand = normBrand(brand);
+  const pkg = target.pkg ?? own?.pkg ?? null;
+  if (tType.words.length === 0) return out;
+
+  const identical: BundledMatch[] = [];
+  const alts: (BundledMatch & { unit: number | null })[] = [];
   for (const item of bundledItems()) {
     if (item === own) continue;
-    if (!tTokens.some((t) => item.tokens.some((x) => x === t || (t.length >= 4 && x.startsWith(t))))) continue;
-    const r = compareProducts({ name: target.name, brand: target.brand, barcode: target.barcode, packageSize: target.pkg ?? null }, { name: item.name, brand: item.brand, packageSize: item.pkg });
-    if (r.kind === 'identical' && !own) out.push({ item, kind: 'identical', score: r.score, reason: r.reason });
-    else if (r.kind !== 'different' && r.score >= 0.6) alts.push({ item, kind: 'alternative', score: r.score, reason: r.reason });
+    if (category && item.category !== category) continue;
+    if (target.barcode && item.barcode === target.barcode) {
+      identical.push({ item, kind: 'identical', score: 1, reason: 'Mismo código de barras' });
+      continue;
+    }
+    const sim = typeSimilarity(tType, typeOf(item));
+    if (sim < EQUIVALENT_THRESHOLD) continue;
+    const sameBrand = tBrand !== '' && normBrand(item.brand) === tBrand;
+    const sameSize = samePackageSize(pkg, item.pkg);
+    if (sameBrand && sameSize === true && sim >= 0.85) {
+      identical.push({ item, kind: 'identical', score: sim, reason: 'Misma marca, producto y tamaño' });
+      continue;
+    }
+    // Comprobación clásica por nombre para productos sin tipo claro (p. ej. sin marca en el nombre).
+    if (!sameBrand && compareProducts({ name: target.name, brand, packageSize: pkg }, { name: item.name, brand: item.brand, packageSize: item.pkg }).kind === 'identical') {
+      identical.push({ item, kind: 'identical', score: sim, reason: 'Mismo nombre, marca y tamaño' });
+      continue;
+    }
+    const ownLabel = isOwnLabel(item.brand);
+    alts.push({
+      item,
+      kind: 'alternative',
+      score: sim,
+      ownLabel,
+      otherSize: sameBrand,
+      unit: bundledUnitPrice(item),
+      reason: sameBrand ? 'Mismo producto en otro tamaño' : ownLabel ? `Marca blanca${item.brand ? ` (${item.brand})` : ''}` : `Otra marca${item.brand ? `: ${item.brand}` : ''}`,
+    });
   }
-  alts.sort((a, b) => b.score - a.score);
-  return [...out, ...alts.slice(0, maxAlternatives)];
+  // Un resultado por tienda y marca (el de mejor precio por litro/kg), del más barato al más caro.
+  const best = new Map<string, BundledMatch & { unit: number | null }>();
+  for (const a of alts) {
+    const k = `${a.item.store}|${normBrand(a.item.brand)}|${a.otherSize ? 's' : 'o'}`;
+    const prev = best.get(k);
+    if (!prev || (a.unit ?? Infinity) < (prev.unit ?? Infinity)) best.set(k, a);
+  }
+  const altList = [...best.values()].sort((a, b) => (a.unit ?? Infinity) - (b.unit ?? Infinity) || b.score - a.score);
+  // Idénticos: uno por tienda.
+  const seenStore = new Set(out.map((o) => o.item.store));
+  for (const i of identical.sort((a, b) => b.score - a.score)) {
+    if (seenStore.has(i.item.store)) continue;
+    seenStore.add(i.item.store);
+    out.push(i);
+  }
+  return [...out, ...altList.slice(0, maxAlternatives)];
 }
 
 /** Busca un código de barras en los catálogos incluidos (solo existe si el emparejamiento con Open Food Facts fue seguro). */

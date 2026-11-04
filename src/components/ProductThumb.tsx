@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { CATEGORIES } from '@/data/types';
 import { BUNDLED_IMAGES } from '@/services/catalog/bundledImages';
+import { packImageUri, usePackImages } from '@/services/catalog/imagePack';
 import { useTheme } from '@/theme/ThemeProvider';
 
 
@@ -34,7 +35,13 @@ export function CategoryBadge({ category, size = 40 }: { category: string | null
  */
 export function imageSource(uri: string | null | undefined, size = 52): number | { uri: string } | null {
   if (!uri) return null;
-  if (uri.startsWith('bundled:')) return BUNDLED_IMAGES[uri.slice(8)] ?? null;
+  if (uri.startsWith('bundled:')) {
+    const id = uri.slice(8);
+    const local = BUNDLED_IMAGES[id];
+    if (local) return local;
+    const packed = packImageUri(id);
+    return packed ? { uri: packed } : null;
+  }
   if (size <= 80 && uri.includes('images.openfoodfacts.org')) return { uri: uri.replace(/\.(400|full)\.jpg$/, '.200.jpg') };
   return { uri };
 }
@@ -49,8 +56,10 @@ export const ProductThumb = memo(function ProductThumb({ uri, category, size = 5
   const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
   const r = size * 0.27;
+  // Se vuelve a pintar cuando terminan de extraerse las fotos empaquetadas (primer arranque).
+  usePackImages((s) => s.ready);
   const source = failed ? null : imageSource(uri, size);
-  const local = typeof source === 'number';
+  const local = typeof source === 'number' || (!!source && source.uri.startsWith('file:'));
   const tint = categoryTint(category);
   return (
     <View style={{ width: size, height: size, borderRadius: r, overflow: 'hidden', backgroundColor: source ? '#FFFFFF' : `${tint}1F`, borderWidth: source ? 1 : 0, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
