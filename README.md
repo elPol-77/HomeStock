@@ -11,7 +11,7 @@ Inventario doméstico inteligente para Android: qué tienes en casa, qué caduca
 - **Fecha de caducidad por OCR**: distingue «consumir antes de» (seguridad) de «consumir preferentemente» (calidad); pasado el consumo preferente **no** se marca como peligroso.
 - **Notificaciones locales**: caducidad (agrupadas por día), stock bajo, agotado, recordatorio de compra y ahorro. Canales Android independientes.
 - **Listas de la compra** con autocompletado desde tu casa y desde el catálogo del súper, sugerencias según tu consumo, modo compra (pantalla siempre encendida) y **Finalizar compra** que mete lo comprado en el inventario.
-- **Comparador de precios**: por producto (idéntico vs. alternativa, precio por kg/L) y de la compra completa con opciones **A** (una tienda), **B** (varias, con coste de desplazamiento) y **C** (tus favoritas). Cada precio muestra **fuente y fecha**; nunca se inventan precios.
+- **Comparador de precios**: por producto (idéntico vs. alternativa, precio por kg/L) y de la compra completa con opciones **A** (una tienda), **B** (varias, con coste de desplazamiento) y **C** (tus favoritas). Cada precio muestra **fuente y fecha**; nunca se inventan precios. Se abre desde un producto (Súper o Inventario) o desde una lista con «Comparar precios»; ya no tiene pestaña propia.
 - **Estadísticas**: gasto por semana/mes/categoría, productos más comprados, desperdicio y ahorro (el verificado separado del estimado).
 - **Hogar compartido** con roles (propietario, admin, miembro), código de invitación y sincronización en tiempo real (Supabase).
 - Diseño: verde salvia, blancos cálidos, modo claro/oscuro, animaciones con «reducir movimiento», vibración opcional, textos accesibles.
@@ -116,3 +116,7 @@ Los datos viven en el móvil. Con cuenta, se guardan en tu proyecto de Supabase 
 
 - Sin internet: inventario, listas, catálogo incluido, OCR, notificaciones y estadísticas funcionan.
 - Con internet: búsqueda/código de barras en Open Food Facts, Open Prices, geolocalización del CP, cuentas y sincronización.
+
+---
+
+Desarrollado por **Pablo Benlloch** · [pablobenlloch.es](https://pablobenlloch.es)

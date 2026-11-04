@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Badge, Button, Card, Chip, Row, Screen, SectionTitle, Stepper, Text, TextField } from '@/components/ui';
+import { Badge, Button, Card, Chip, Divider, Row, Screen, SectionTitle, Stepper, SwitchRow, Text, TextField } from '@/components/ui';
 import { formatDate } from '@/domain/dates';
 import { bundledCatalogInfo } from '@/services/catalog/bundled';
 import { STORE_CHAINS, storeName } from '@/services/catalog/stores';
@@ -135,6 +135,19 @@ export default function StoresSettings() {
         <Text variant="caption" color="textFaint">
           Los precios cambian: mejor comparar con datos recientes.
         </Text>
+      </Card>
+
+      <SectionTitle title="Fuentes de precios" />
+      <Card style={{ gap: 6, paddingVertical: 8 }}>
+        <SwitchRow
+          icon="people-outline"
+          label="Usar Open Prices"
+          description="Precios reales aportados por la comunidad (con ticket o foto). Cobertura todavía limitada en España."
+          value={s.usePublicPrices}
+          onChange={(v) => s.update({ usePublicPrices: v })}
+        />
+        <Divider />
+        <SwitchRow icon="flask-outline" label="Modo demostración" description="Muestra precios ficticios, siempre etiquetados como «demo», para probar el comparador." value={s.demoPrices} onChange={(v) => s.update({ demoPrices: v })} />
       </Card>
     </Screen>
   );

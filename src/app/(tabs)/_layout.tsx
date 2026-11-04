@@ -19,7 +19,6 @@ const TABS: Record<string, { label: string; icon: IconName; active: IconName }> 
   inventory: { label: 'Inventario', icon: 'file-tray-stacked-outline', active: 'file-tray-stacked' },
   shop: { label: 'Listas', icon: 'cart-outline', active: 'cart' },
   catalog: { label: 'Súper', icon: 'storefront-outline', active: 'storefront' },
-  prices: { label: 'Precios', icon: 'pricetags-outline', active: 'pricetags' },
   profile: { label: 'Perfil', icon: 'person-circle-outline', active: 'person-circle' },
 };
 
@@ -105,7 +104,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="inventory" />
       <Tabs.Screen name="shop" />
       <Tabs.Screen name="catalog" />
-      <Tabs.Screen name="prices" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

@@ -176,7 +176,7 @@ export default function Home() {
                 </Text>
                 <AnimatedNumber value={data.spentThisMonth} format={formatEuro} variant="heading" />
               </Card>
-              <Card style={{ flex: 1, gap: 4 }} tone="accent" onPress={() => router.push('/prices')}>
+              <Card style={{ flex: 1, gap: 4 }} tone="accent" onPress={() => router.push('/stats')}>
                 <Text variant="caption" color="textMuted">
                   {potential != null ? 'Ahorro potencial (estimado)' : 'Ahorro verificado este mes'}
                 </Text>

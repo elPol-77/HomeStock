@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 
 import { Badge, Button, Card, Divider, ListRow, Row, Screen, SectionTitle, Segmented, SwitchRow, Text } from '@/components/ui';
 import { useLiveQuery } from '@/db/events';
@@ -11,6 +11,7 @@ import { useSettings } from '@/services/settings';
 import { syncNow, useSync } from '@/services/sync';
 import { toast } from '@/services/toast';
 import { useTheme } from '@/theme/ThemeProvider';
+import { fonts } from '@/theme/tokens';
 
 export default function Profile() {
   const { colors } = useTheme();
@@ -82,7 +83,7 @@ export default function Profile() {
         <Divider />
         <ListRow icon="file-tray-stacked-outline" title="Zonas de casa" subtitle="Nevera, despensa, baño… (editables)" onPress={() => router.push('/settings/locations')} />
         <Divider />
-        <ListRow icon="storefront-outline" title="Tiendas y precios" subtitle="Ubicación, favoritas, distancia" onPress={() => router.push('/settings/stores')} />
+        <ListRow icon="storefront-outline" title="Tiendas y precios" subtitle="Ubicación, favoritas y fuentes de precios" onPress={() => router.push('/settings/stores')} />
         <Divider />
         <ListRow icon="sparkles-outline" title="IA para fotos" subtitle="Clave gratuita de Gemini para la foto de la nevera" onPress={() => router.push('/settings/vision')} />
         <Divider />
@@ -130,6 +131,19 @@ export default function Profile() {
         <ListRow icon="shield-checkmark-outline" title="Privacidad y datos" subtitle="Exportar, borrar y cómo tratamos tus datos" onPress={() => router.push('/settings/privacy')} />
       </Card>
 
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel="Desarrollado por Pablo Benlloch. Abrir pablobenlloch.es"
+        onPress={() => Linking.openURL('https://pablobenlloch.es')}
+        hitSlop={8}
+        style={({ pressed }) => ({ alignItems: 'center', gap: 2, paddingVertical: 6, opacity: pressed ? 0.6 : 1 })}>
+        <Text variant="caption" color="textMuted" align="center">
+          Desarrollado por <Text variant="caption" style={{ color: colors.primary, fontFamily: fonts.bold }}>Pablo Benlloch</Text>
+        </Text>
+        <Text variant="caption" color="primary" align="center">
+          pablobenlloch.es
+        </Text>
+      </Pressable>
       <Text variant="caption" color="textFaint" align="center">
         HomeStock {Constants.expoConfig?.version ?? ''} · Datos de productos: Open Food Facts (ODbL) · Precios comunitarios: Open Prices (ODbL)
       </Text>
