@@ -1,16 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { ComponentProps, useState } from 'react';
+import { ComponentProps, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { ProductThumb } from '@/components/ProductThumb';
-import { Card, ScalePressable, Screen, SectionTitle, Text, TextField } from '@/components/ui';
+import { CatalogResultRow } from '@/components/CatalogResultRow';
+import { Card, Screen, SectionTitle, Text, TextField } from '@/components/ui';
+import { formatShortDate } from '@/domain/dates';
+import { bundledToCatalogProduct, searchBundled } from '@/services/catalog/bundled';
 import { searchCatalog } from '@/services/catalog/openFoodFacts';
+import { storeName } from '@/services/catalog/stores';
 import { CatalogProduct } from '@/services/catalog/types';
 import { draftFromCatalog, useDrafts } from '@/services/drafts';
 import { useTheme } from '@/theme/ThemeProvider';
-import { radius } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -28,6 +30,7 @@ export default function AddSheet() {
   const [results, setResults] = useState<CatalogProduct[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const local = useMemo(() => (query.trim().length >= 2 ? searchBundled(query, 15).map(bundledToCatalogProduct) : []), [query]);
 
   const search = async () => {
     if (query.trim().length < 2) return;
@@ -43,7 +46,11 @@ export default function AddSheet() {
   };
 
   const pick = (p: CatalogProduct) => {
-    setDraft(draftFromCatalog(p, 'search', 'Datos de Open Food Facts: revisa que coinciden con tu producto.'));
+    const notice =
+      p.source === 'store' && p.storePrice
+        ? `Datos del catálogo de ${storeName(p.storePrice.store)} (${formatShortDate(p.storePrice.date)}). Revisa el formato y añade la fecha de caducidad.`
+        : 'Datos de Open Food Facts: revisa que coinciden con tu producto.';
+    setDraft(draftFromCatalog(p, 'search', notice));
     router.replace('/product/edit?draft=1');
   };
 
@@ -83,10 +90,13 @@ export default function AddSheet() {
         icon="search"
         placeholder="Ej.: leche semidesnatada Hacendado"
         value={query}
-        onChangeText={setQuery}
+        onChangeText={(t) => {
+          setQuery(t);
+          setResults(null);
+        }}
         onSubmitEditing={search}
         returnKeyType="search"
-        hint="Catálogo abierto Open Food Facts (miles de productos de supermercados españoles)."
+        hint="Resultados al instante del catálogo del súper. Pulsa buscar para consultar también Open Food Facts."
         right={loading ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="arrow-forward-circle" size={26} color={colors.primary} onPress={search} accessibilityLabel="Buscar" />}
       />
       {error ? (
@@ -94,7 +104,12 @@ export default function AddSheet() {
           {error}
         </Text>
       ) : null}
-      {results && results.length === 0 ? (
+      {local.length > 0 ? <SectionTitle title="Catálogo del supermercado" /> : null}
+      {local.map((p) => (
+        <CatalogResultRow key={p.bundledId} p={p} onPress={() => pick(p)} />
+      ))}
+      {results && results.length > 0 ? <SectionTitle title="Open Food Facts" /> : null}
+      {results && results.length === 0 && local.length === 0 ? (
         <Card tone="alt">
           <Text variant="body" color="textMuted">
             No encontramos «{query}». Puedes crearlo a mano y quedará guardado para la próxima vez.
@@ -102,23 +117,7 @@ export default function AddSheet() {
         </Card>
       ) : null}
       {results?.map((p) => (
-        <ScalePressable
-          key={`${p.barcode}-${p.name}`}
-          accessibilityRole="button"
-          accessibilityLabel={`${p.name} ${p.brand ?? ''} ${p.quantityText ?? ''}`}
-          onPress={() => pick(p)}
-          style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: 10, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <ProductThumb uri={p.imageUrl} category={p.category} size={48} />
-          <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" numberOfLines={2}>
-              {p.name}
-            </Text>
-            <Text variant="caption" color="textMuted" numberOfLines={1}>
-              {[p.brand, p.quantityText, p.barcode].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
-          <Ionicons name="add-circle" size={26} color={colors.primary} />
-        </ScalePressable>
+        <CatalogResultRow key={`${p.barcode}-${p.name}`} p={p} onPress={() => pick(p)} />
       ))}
     </Screen>
   );

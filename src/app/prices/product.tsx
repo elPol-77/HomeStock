@@ -30,6 +30,7 @@ interface Target {
   pkg: PackageSize | null;
   image: string | null;
   category: string | null;
+  bundledId?: string | null;
 }
 
 function PriceRow({ r, best }: { r: ProductPriceRow; best: boolean }) {
@@ -80,7 +81,7 @@ function PriceRow({ r, best }: { r: ProductPriceRow; best: boolean }) {
 
 export default function ProductPrices() {
   const { colors } = useTheme();
-  const params = useLocalSearchParams<{ productId?: string; barcode?: string; name?: string; brand?: string; qty?: string; image?: string }>();
+  const params = useLocalSearchParams<{ productId?: string; barcode?: string; name?: string; brand?: string; qty?: string; image?: string; bundledId?: string }>();
   const [target, setTarget] = useState<Target | null>(null);
   const [rows, setRows] = useState<ProductPriceRow[] | null>(null);
   const [publicError, setPublicError] = useState<string | null>(null);
@@ -96,10 +97,10 @@ export default function ProductPrices() {
         const p = await getProduct(params.productId);
         if (p) setTarget({ productId: p.id, barcode: p.barcode, name: p.name, brand: p.brand, pkg: packageOf(p) ?? parsePackageSize(p.name), image: p.image_url, category: p.category });
       } else if (params.name) {
-        setTarget({ productId: null, barcode: params.barcode || null, name: params.name, brand: params.brand || null, pkg: parsePackageSize(params.qty || params.name), image: params.image || null, category: null });
+        setTarget({ productId: null, barcode: params.barcode || null, name: params.name, brand: params.brand || null, pkg: parsePackageSize(params.qty || params.name), image: params.image || null, category: null, bundledId: params.bundledId || null });
       }
     })();
-  }, [params.productId, params.barcode, params.name, params.brand, params.qty, params.image]);
+  }, [params.productId, params.barcode, params.name, params.brand, params.qty, params.image, params.bundledId]);
 
   const load = useCallback(async () => {
     if (!target) return;

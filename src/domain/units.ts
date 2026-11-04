@@ -46,7 +46,8 @@ export function parsePackageSize(text: string | null | undefined): PackageSize |
   if (!text) return null;
   const t = normalizeText(text).replace(/(\d),(\d)/g, '$1.$2');
   const unitGroup = '(kg|kgs|kilos?|g|gr|grs|gramos|ml|cl|l|lt|lts|litros?|ud|uds|unidades|rollos?|lavados|capsulas|bolsitas|piezas|pastillas)';
-  const multi = new RegExp(`(\\d+)\\s*x\\s*(\\d+(?:\\.\\d+)?)\\s*${unitGroup}\\b`);
+  // "6 x 1 l", "6 botellas x 1.5 l", "3 mini briks x 200 ml"
+  const multi = new RegExp(`(\\d+)\\s*(?:[a-z]+\\s+){0,2}x\\s*(\\d+(?:\\.\\d+)?)\\s*${unitGroup}\\b`);
   const m1 = t.match(multi);
   if (m1) {
     const unit = toUnit(m1[3]);
@@ -56,6 +57,13 @@ export function parsePackageSize(text: string | null | undefined): PackageSize |
   const m2 = t.match(single);
   if (m2) {
     const unit = toUnit(m2[2]);
+    if (unit === 'ud') {
+      // "Caja 16 cápsulas (112 g)", "Paquete 20 ud. (200 g)": el peso/volumen total permite comparar por kg o litro.
+      const rest = t.slice((m2.index ?? 0) + m2[0].length);
+      const w = rest.match(/(\d+(?:\.\d+)?)\s*(kg|g|gr|ml|cl|l)\b/);
+      const wu = w ? toUnit(w[2]) : null;
+      if (w && wu) return { count: 1, amount: Number(w[1]), unit: wu };
+    }
     if (unit) return { count: 1, amount: Number(m2[1]), unit };
   }
   return null;

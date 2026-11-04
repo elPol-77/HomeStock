@@ -1,0 +1,9 @@
+expo.modules.homestockocr.homestock-ocr-pngs-0 /home/claude/homestock/modules/homestock-ocr/android/build/generated/res/pngs/release
+expo.modules.homestockocr.homestock-ocr-updated_navigation_xml-1 /home/claude/homestock/modules/homestock-ocr/android/build/generated/updated_navigation_xml/release
+expo.modules.homestockocr.homestock-ocr-mergeReleaseResources-2 /home/claude/homestock/modules/homestock-ocr/android/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
+expo.modules.homestockocr.homestock-ocr-mergeReleaseResources-3 /home/claude/homestock/modules/homestock-ocr/android/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
+expo.modules.homestockocr.homestock-ocr-release-4 /home/claude/homestock/modules/homestock-ocr/android/build/intermediates/merged_res/release/mergeReleaseResources
+expo.modules.homestockocr.homestock-ocr-release-5 /home/claude/homestock/modules/homestock-ocr/android/build/intermediates/packaged_res/release/packageReleaseResources
+expo.modules.homestockocr.homestock-ocr-main-6 /home/claude/homestock/modules/homestock-ocr/android/src/main/res
+expo.modules.homestockocr.homestock-ocr-release-7 /home/claude/homestock/modules/homestock-ocr/android/src/release/res
+gradleHome-0 /root/.gradle

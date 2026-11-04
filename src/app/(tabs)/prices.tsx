@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import { ProductThumb } from '@/components/ProductThumb';
-import { Badge, Button, Card, Divider, Row, ScalePressable, Screen, SectionTitle, SwitchRow, Text, TextField } from '@/components/ui';
+import { CatalogResultRow } from '@/components/CatalogResultRow';
+import { Badge, Button, Card, Divider, Row, Screen, SectionTitle, SwitchRow, Text, TextField } from '@/components/ui';
 import { all, householdId } from '@/db/client';
 import { useLiveQuery } from '@/db/events';
 import { listShoppingLists } from '@/data/lists';
@@ -12,12 +12,13 @@ import type { PriceObservation } from '@/data/types';
 import { PRICE_SOURCE_LABEL } from '@/domain/basket';
 import { formatShortDate } from '@/domain/dates';
 import { formatEuro } from '@/domain/text';
+import { bundledCatalogInfo, bundledToCatalogProduct, searchBundled } from '@/services/catalog/bundled';
 import { searchCatalog } from '@/services/catalog/openFoodFacts';
 import { STORE_CHAINS, storeName } from '@/services/catalog/stores';
 import { CatalogProduct } from '@/services/catalog/types';
 import { useSettings } from '@/services/settings';
 import { useTheme } from '@/theme/ThemeProvider';
-import { radius } from '@/theme/tokens';
+import { fonts } from '@/theme/tokens';
 
 async function recentPrices() {
   return all<PriceObservation>(`SELECT * FROM price_observations WHERE deleted = 0 AND household_id = ? AND source != 'demo' ORDER BY observed_at DESC, created_at DESC LIMIT 8`, [householdId()]);
@@ -30,6 +31,9 @@ export default function Prices() {
   const [results, setResults] = useState<CatalogProduct[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const local = useMemo(() => (query.trim().length >= 2 ? searchBundled(query, 10).map(bundledToCatalogProduct) : []), [query]);
+  const open = (p: CatalogProduct) =>
+    router.push({ pathname: '/prices/product', params: { barcode: p.barcode ?? '', name: p.name, brand: p.brand ?? '', qty: p.quantityText ?? '', image: p.imageUrl ?? '', bundledId: p.bundledId ?? '' } });
   const lists = useLiveQuery(() => listShoppingLists('active'), ['shopping_lists', 'list_items']);
   const recent = useLiveQuery(recentPrices, ['price_observations']);
 
@@ -61,7 +65,11 @@ export default function Prices() {
         icon="search"
         placeholder="Ej.: Coca-Cola Zero 2 L"
         value={query}
-        onChangeText={setQuery}
+        onChangeText={(t) => {
+          setQuery(t);
+          setResults(null);
+        }}
+        hint={bundledCatalogInfo().map((c) => `${storeName(c.store)}: ${c.count} productos (${formatShortDate(c.capturedAt)})`).join(' · ') + ' · Pulsa buscar para Open Food Facts.'}
         onSubmitEditing={search}
         returnKeyType="search"
         right={loading ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="arrow-forward-circle" size={26} color={colors.primary} onPress={search} accessibilityLabel="Buscar" />}
@@ -71,29 +79,16 @@ export default function Prices() {
           {error}
         </Text>
       ) : null}
-      {results?.length === 0 ? (
+      {local.map((p) => (
+        <CatalogResultRow key={p.bundledId} p={p} icon="chevron-forward-circle" label={`Ver precios de ${p.name}`} onPress={() => open(p)} />
+      ))}
+      {results?.length === 0 && local.length === 0 ? (
         <Text variant="body" color="textMuted">
           Sin resultados para «{query}».
         </Text>
       ) : null}
       {results?.slice(0, 10).map((p) => (
-        <ScalePressable
-          key={`${p.barcode}-${p.name}`}
-          accessibilityRole="button"
-          accessibilityLabel={`Ver precios de ${p.name}`}
-          onPress={() => router.push({ pathname: '/prices/product', params: { barcode: p.barcode ?? '', name: p.name, brand: p.brand ?? '', qty: p.quantityText ?? '', image: p.imageUrl ?? '' } })}
-          style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: 10, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <ProductThumb uri={p.imageUrl} category={p.category} size={46} />
-          <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" numberOfLines={2}>
-              {p.name}
-            </Text>
-            <Text variant="caption" color="textMuted">
-              {[p.brand, p.quantityText].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
-        </ScalePressable>
+        <CatalogResultRow key={`${p.barcode}-${p.name}`} p={p} icon="chevron-forward-circle" label={`Ver precios de ${p.name}`} onPress={() => open(p)} />
       ))}
 
       <SectionTitle title="Compara tu compra completa" />
@@ -112,7 +107,7 @@ export default function Prices() {
               <View style={{ flex: 1 }}>
                 <Text variant="bodyStrong">{l.name}</Text>
                 <Text variant="caption" color="textMuted">
-                  {l.total_items - l.checked_items} productos · opciones A, B y C
+                  {l.total_items - l.checked_items} {l.total_items - l.checked_items === 1 ? 'producto' : 'productos'} · opciones A, B y C
                 </Text>
               </View>
               <Ionicons name="git-compare-outline" size={22} color={colors.primary} />
@@ -149,13 +144,13 @@ export default function Prices() {
         <Row gap={10}>
           <Ionicons name="receipt-outline" size={18} color={colors.primary} />
           <Text variant="caption" style={{ flex: 1 }}>
-            <Text variant="caption" style={{ fontWeight: '700' }}>Tus tickets y compras</Text>: precios reales que has pagado.
+            <Text variant="caption" style={{ fontFamily: fonts.bold }}>Tus tickets y compras</Text>: precios reales que has pagado.
           </Text>
         </Row>
         <Row gap={10}>
           <Ionicons name="people-outline" size={18} color={colors.primary} />
           <Text variant="caption" style={{ flex: 1 }}>
-            <Text variant="caption" style={{ fontWeight: '700' }}>Open Prices</Text>: base de datos abierta con precios reales aportados por personas (con ticket o foto como prueba). Cobertura todavía limitada en España.
+            <Text variant="caption" style={{ fontFamily: fonts.bold }}>Open Prices</Text>: base de datos abierta con precios reales aportados por personas (con ticket o foto como prueba). Cobertura todavía limitada en España.
           </Text>
         </Row>
         <SwitchRow label="Usar Open Prices" description={s.geo ? `Tiendas a menos de ${s.maxDistanceKm} km de ${s.geo.label}` : 'Toda España (configura tu ubicación en Perfil → Tiendas)'} value={s.usePublicPrices} onChange={(v) => s.update({ usePublicPrices: v })} />

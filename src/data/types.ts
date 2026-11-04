@@ -10,7 +10,7 @@ export interface Location {
   sort_order: number;
 }
 
-export type ProductSource = 'manual' | 'off' | 'receipt' | 'photo' | 'list';
+export type ProductSource = 'manual' | 'off' | 'receipt' | 'photo' | 'list' | 'catalog';
 
 export interface Product {
   id: string;
@@ -163,6 +163,7 @@ export const CATEGORIES: { name: string; icon: string; subcategories: string[] }
   { name: 'Limpieza', icon: 'sparkles-outline', subcategories: ['Lejía', 'Multiusos', 'Lavavajillas', 'Fregasuelos', 'Bayetas'] },
   { name: 'Lavandería', icon: 'shirt-outline', subcategories: ['Detergente', 'Suavizante', 'Quitamanchas'] },
   { name: 'Higiene personal', icon: 'water-outline', subcategories: ['Gel', 'Champú', 'Dental', 'Desodorante', 'Papel higiénico'] },
+  { name: 'Bebé', icon: 'happy-outline', subcategories: ['Alimentación infantil', 'Pañales', 'Higiene bebé', 'Biberones'] },
   { name: 'Mascotas', icon: 'paw-outline', subcategories: ['Pienso', 'Comida húmeda', 'Arena', 'Snacks'] },
   { name: 'Otros', icon: 'cube-outline', subcategories: [] },
 ];

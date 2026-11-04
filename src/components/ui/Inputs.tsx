@@ -82,6 +82,7 @@ export function Stepper({
   size = 'md',
   label,
   format,
+  hideValue,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -90,6 +91,8 @@ export function Stepper({
   size?: 'sm' | 'md';
   label?: string;
   format?: (v: number) => string;
+  /** Oculta el número (cuando ya se muestra en grande en otro sitio). */
+  hideValue?: boolean;
 }) {
   const { colors, reduceMotion } = useTheme();
   const bump = useSharedValue(1);
@@ -117,10 +120,12 @@ export function Stepper({
         style={{ width: btn, height: btn, borderRadius: btn / 2, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', opacity: value <= min ? 0.4 : 1 }}>
         <Ionicons name="remove" size={btn * 0.5} color={colors.text} />
       </ScalePressable>
-      <Animated.View style={[{ minWidth: size === 'sm' ? 28 : 40, alignItems: 'center' }, anim]}>
-        <Text variant={size === 'sm' ? 'bodyStrong' : 'heading'} accessibilityLiveRegion="polite">
-          {shown}
-        </Text>
+      <Animated.View style={[{ minWidth: hideValue ? 24 : size === 'sm' ? 28 : 40, alignItems: 'center' }, anim]}>
+        {hideValue ? null : (
+          <Text variant={size === 'sm' ? 'bodyStrong' : 'heading'} accessibilityLiveRegion="polite">
+            {shown}
+          </Text>
+        )}
       </Animated.View>
       <ScalePressable
         accessibilityRole="button"

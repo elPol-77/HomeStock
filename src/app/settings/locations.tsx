@@ -46,7 +46,7 @@ export default function Locations() {
             <View style={{ flex: 1 }}>
               <Text variant="bodyStrong">{l.name}</Text>
               <Text variant="caption" color="textMuted">
-                {counts.data?.[l.id] ?? 0} productos
+                {counts.data?.[l.id] ?? 0} {(counts.data?.[l.id] ?? 0) === 1 ? 'producto' : 'productos'}
               </Text>
             </View>
             <IconButton icon="create-outline" label={`Renombrar ${l.name}`} onPress={() => { setEditing(l.id); setEditName(l.name); }} />

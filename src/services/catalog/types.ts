@@ -2,7 +2,7 @@ import type { PriceSource } from '@/domain/basket';
 import type { ISODate } from '@/domain/dates';
 import type { PackageSize } from '@/domain/units';
 
-export type CatalogSource = 'off' | 'obf' | 'opf' | 'opff' | 'local' | 'demo';
+export type CatalogSource = 'off' | 'obf' | 'opf' | 'opff' | 'local' | 'store' | 'demo';
 
 export const CATALOG_SOURCE_LABEL: Record<CatalogSource, string> = {
   off: 'Open Food Facts',
@@ -10,6 +10,7 @@ export const CATALOG_SOURCE_LABEL: Record<CatalogSource, string> = {
   opf: 'Open Products Facts',
   opff: 'Open Pet Food Facts',
   local: 'Tu hogar',
+  store: 'Catálogo del súper',
   demo: 'Demostración',
 };
 
@@ -25,6 +26,9 @@ export interface CatalogProduct {
   packaging: string | null;
   /** Página pública de la ficha (para verificarla). */
   url: string | null;
+  /** Solo en catálogos incluidos de supermercado. */
+  bundledId?: string;
+  storePrice?: { store: string; price: number; regularPrice: number | null; unitLabel: string; date: string };
 }
 
 export interface ExternalPrice {

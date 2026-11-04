@@ -26,6 +26,11 @@ describe('unidades y precio unitario', () => {
     expect(parsePackageSize('Arroz 1,5kg')).toEqual({ count: 1, amount: 1.5, unit: 'kg' });
     expect(parsePackageSize('Coca-Cola Zero 2L')).toEqual({ count: 1, amount: 2, unit: 'l' });
     expect(parsePackageSize('Papel higiénico 12 rollos')).toEqual({ count: 1, amount: 12, unit: 'ud' });
+    // Formatos tal como aparecen en los catálogos de supermercado
+    expect(parsePackageSize('6 botellas x 1,5 L')).toEqual({ count: 6, amount: 1.5, unit: 'l' });
+    expect(parsePackageSize('3 mini briks x 200 ml')).toEqual({ count: 3, amount: 200, unit: 'ml' });
+    expect(parsePackageSize('Caja 16 cápsulas (112 g)')).toEqual({ count: 1, amount: 112, unit: 'g' });
+    expect(parsePackageSize('Tarro 420 g (235 g escurrido)')).toEqual({ count: 1, amount: 420, unit: 'g' });
     expect(parsePackageSize('Yogur natural')).toBeNull();
   });
   it('calcula precio por litro/kg', () => {

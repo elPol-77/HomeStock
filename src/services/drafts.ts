@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 
+import { formatShortDate } from '@/domain/dates';
 import type { ExpiryKind } from '@/domain/expiry';
 import type { ParsedReceipt } from '@/domain/receiptParser';
 import type { PackageSize } from '@/domain/units';
 
+import { storeName } from './catalog/stores';
 import type { CatalogProduct } from './catalog/types';
 
 /** Borrador de producto que pasa del escáner/foto/búsqueda al formulario. */
@@ -31,7 +33,7 @@ export function draftFromCatalog(p: CatalogProduct, origin: ProductDraft['origin
     category: p.category,
     pkg: p.pkg,
     packaging: p.packaging,
-    sourceLabel: p.source === 'local' ? 'Tu hogar' : 'Open Food Facts',
+    sourceLabel: p.source === 'local' ? 'Tu hogar' : p.source === 'store' ? `Catálogo ${storeName(p.storePrice?.store)} · ${p.storePrice ? formatShortDate(p.storePrice.date) : ''}` : 'Open Food Facts',
     sourceUrl: p.url,
     notice,
     origin,

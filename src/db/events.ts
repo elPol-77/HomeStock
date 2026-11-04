@@ -34,8 +34,11 @@ export function useLiveQuery<T>(query: () => Promise<T>, tables: readonly Table[
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const queryRef = useRef(query);
-  queryRef.current = query;
   const seq = useRef(0);
+  // La consulta más reciente (puede capturar props nuevas) sin re-suscribirse en cada render.
+  useEffect(() => {
+    queryRef.current = query;
+  });
 
   const load = useCallback(() => {
     const id = ++seq.current;
@@ -53,13 +56,15 @@ export function useLiveQuery<T>(query: () => Promise<T>, tables: readonly Table[
       .finally(() => {
         if (id === seq.current) setLoading(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, []);
 
+  const depsKey = deps.map((d) => String(d)).join('|');
+  const tablesKey = tables.join(',');
   useEffect(() => {
+    queryRef.current = query;
     setLoading(true);
     load();
-    const watched = new Set<string>(tables);
+    const watched = new Set<string>(tablesKey.split(','));
     return subscribe((changed) => {
       for (const t of changed) {
         if (watched.has(t)) {
@@ -69,7 +74,7 @@ export function useLiveQuery<T>(query: () => Promise<T>, tables: readonly Table[
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load]);
+  }, [load, depsKey, tablesKey]);
 
   return { data, loading, error, reload: load };
 }

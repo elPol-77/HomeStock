@@ -8,6 +8,7 @@ import { textSimilarity } from '@/domain/text';
 import { PackageSize, parsePackageSize, unitPrice } from '@/domain/units';
 import type { PriceObservation, Product } from '@/data/types';
 
+import { bundledCatalogInfo, matchBundled, packagePrice, priceUnitLabel } from './catalog/bundled';
 import { latestPerStore, pricesForBarcodes } from './catalog/openPrices';
 import { storeName } from './catalog/stores';
 import { demoOffersFor } from './demoPrices';
@@ -30,13 +31,15 @@ export interface ProductPriceRow {
   matchReason: string;
 }
 
+const BUNDLED_DATE = () => bundledCatalogInfo().reduce((d, c) => (c.capturedAt > d ? c.capturedAt : d), '1970-01-01');
+
 function geoFilter() {
   const s = settings();
   return s.geo ? { lat: s.geo.lat, lon: s.geo.lon, radiusKm: s.maxDistanceKm } : null;
 }
 
 /** Precios conocidos de un producto concreto (por código o id), con alternativas comparables por precio unitario. */
-export async function pricesForProduct(target: { productId?: string | null; barcode?: string | null; name: string; brand?: string | null; pkg?: PackageSize | null }): Promise<{ rows: ProductPriceRow[]; publicError: string | null }> {
+export async function pricesForProduct(target: { productId?: string | null; barcode?: string | null; name: string; brand?: string | null; pkg?: PackageSize | null; bundledId?: string | null }): Promise<{ rows: ProductPriceRow[]; publicError: string | null }> {
   const s = settings();
   const since = addDays(todayISO(), -s.priceMaxAgeDays);
   const rows: ProductPriceRow[] = [];
@@ -62,6 +65,20 @@ export async function pricesForProduct(target: { productId?: string | null; barc
       unitPriceText: up ? `${up.value.toFixed(2).replace('.', ',')} €/${up.per === 'l' ? 'L' : up.per}` : null,
       isOffer: !!o.is_offer, regularPrice: o.regular_price, date: o.observed_at, location: o.store_location, source: o.source, sourceRef: o.source_ref,
       match: cmp.kind, productName: o.product_name, matchReason: cmp.reason,
+    });
+  }
+
+  // Catálogos de supermercado incluidos en la app (precio con su fecha de captura).
+  for (const m of matchBundled({ ...target, pkg })) {
+    if (daysBetween(m.item.capturedAt, todayISO()) > s.priceMaxAgeDays) continue;
+    const total = packagePrice(m.item);
+    const shown = total ?? m.item.price;
+    const up = total != null ? unitPrice(total, m.item.pkg) : null;
+    rows.push({
+      store: m.item.store, storeLabel: storeName(m.item.store), price: shown, unitPriceValue: up?.value ?? null,
+      unitPriceText: up ? `${up.value.toFixed(2).replace('.', ',')} €/${up.per === 'l' ? 'L' : up.per}` : total == null ? `${m.item.price.toFixed(2).replace('.', ',')} € ${priceUnitLabel(m.item)}` : null,
+      isOffer: m.item.isOffer, regularPrice: m.item.regularPrice, date: m.item.capturedAt, location: null, source: 'connector', sourceRef: null,
+      match: m.kind, productName: [m.item.name, m.item.format].filter(Boolean).join(' · '), matchReason: m.reason,
     });
   }
 
@@ -137,6 +154,17 @@ export async function compareList(listId: string): Promise<BasketRun> {
       const key = `${o.store}|${match}`;
       if (latest.has(key)) continue; // ya tenemos la más reciente (orden DESC)
       latest.set(key, { itemId: item.id, store: o.store, productName: o.product_name, price: o.price, isOffer: !!o.is_offer, regularPrice: o.regular_price, match, observedAt: o.observed_at, source: o.source });
+    }
+    // Catálogo incluido: el idéntico si existe; si no, la mejor alternativa por tienda.
+    if (daysBetween(BUNDLED_DATE(), todayISO()) <= s.priceMaxAgeDays) {
+      for (const m of matchBundled({ name: product?.name ?? item.name, brand: product?.brand ?? null, barcode: product?.barcode ?? null, pkg }, 3)) {
+        const key = `${m.item.store}|${m.kind}`;
+        const prev = latest.get(key);
+        if (prev && prev.observedAt >= m.item.capturedAt) continue;
+        const total = packagePrice(m.item);
+        if (total == null) continue;
+        latest.set(key, { itemId: item.id, store: m.item.store, productName: m.item.name, price: total, isOffer: m.item.isOffer, regularPrice: m.item.regularPrice, match: m.kind, observedAt: m.item.capturedAt, source: 'connector' });
+      }
     }
     offers.push(...latest.values());
   }

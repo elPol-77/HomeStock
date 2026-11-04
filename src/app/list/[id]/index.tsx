@@ -7,14 +7,16 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { ListItemRow } from '@/components/ListItemRow';
 import { StorePicker } from '@/components/Pickers';
 import { Button, Card, Chip, EmptyState, IconButton, Row, ScalePressable, Screen, SectionTitle, SkeletonList, Text, TextField } from '@/components/ui';
+import { addBundledToList } from '@/data/catalogProducts';
 import { useLiveQuery } from '@/db/events';
 import { addListItem, deleteList, getList, getListItems, renameList, setListStatus } from '@/data/lists';
 import { lastPaidPrice } from '@/data/prices';
 import { allProducts } from '@/data/products';
 import { getSuggestions } from '@/data/summary';
 import type { ListItem, Product } from '@/data/types';
-import { normalizeText } from '@/domain/text';
-import { formatEuro } from '@/domain/text';
+import { formatEuro, normalizeText } from '@/domain/text';
+import { BundledItem, priceUnitLabel, searchBundled } from '@/services/catalog/bundled';
+import { storeColor, storeName } from '@/services/catalog/stores';
 import { haptic } from '@/services/haptics';
 import { addProductToList } from '@/services/inventoryActions';
 import { toast } from '@/services/toast';
@@ -46,6 +48,11 @@ export default function ListDetail() {
     if (q.length < 2) return [];
     return (products.data ?? []).filter((p: Product) => normalizeText(`${p.name} ${p.brand ?? ''}`).includes(q)).slice(0, 5);
   }, [text, products.data]);
+  const catalogMatches = useMemo(() => {
+    if (text.trim().length < 2) return [];
+    const own = new Set(matches.map((p) => normalizeText(p.name)));
+    return searchBundled(text, 8).filter((b) => !own.has(normalizeText(b.name))).slice(0, 6);
+  }, [text, matches]);
 
   const pending = (items.data ?? []).filter((i) => !i.checked);
   const done = (items.data ?? []).filter((i) => i.checked);
@@ -60,6 +67,11 @@ export default function ListDetail() {
       await addListItem(id, { name: t });
       haptic.light();
     }
+    setText('');
+  };
+  const addCatalog = async (b: BundledItem) => {
+    await addBundledToList(id, b);
+    haptic.light();
     setText('');
   };
   const addProduct = async (p: Product) => {
@@ -152,15 +164,34 @@ export default function ListDetail() {
             blurOnSubmit={false}
             accessibilityLabel="Añadir producto a la lista"
           />
-          {matches.length > 0 ? (
+          {matches.length + catalogMatches.length > 0 ? (
             <Animated.View entering={FadeIn} exiting={FadeOut} style={{ borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
               {matches.map((p) => (
                 <ScalePressable key={p.id} accessibilityRole="button" accessibilityLabel={`Añadir ${p.name}`} onPress={() => addProduct(p)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}>
-                  <Ionicons name="cube-outline" size={18} color={colors.primary} />
+                  <Ionicons name="home-outline" size={18} color={colors.primary} />
                   <Text variant="body" style={{ flex: 1 }}>
                     {p.name}
                     {p.brand ? <Text variant="caption" color="textMuted">{`  ${p.brand}`}</Text> : null}
                   </Text>
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                </ScalePressable>
+              ))}
+              {catalogMatches.map((b) => (
+                <ScalePressable
+                  key={b.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Añadir ${b.name}, ${b.format ?? ''}, ${formatEuro(b.price)} en ${storeName(b.store)}`}
+                  onPress={() => addCatalog(b)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, marginHorizontal: 5, backgroundColor: storeColor(b.store) }} />
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" numberOfLines={1}>
+                      {b.name}
+                    </Text>
+                    <Text variant="caption" color="textMuted" numberOfLines={1}>
+                      {[b.format, `${formatEuro(b.price)}${b.priceUnit === 'ud' ? '' : ` ${priceUnitLabel(b)}`} en ${storeName(b.store)}`].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
                   <Ionicons name="add" size={20} color={colors.primary} />
                 </ScalePressable>
               ))}

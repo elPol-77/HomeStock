@@ -45,3 +45,6 @@ example
 # Native (Continuous Native Generation: se regeneran con `npx expo prebuild`)
 /android
 /ios
+
+# Variables locales (la clave anon es pública, pero cada uno usa su proyecto)
+.env

@@ -32,7 +32,6 @@ const REASON: Record<MovementReason, { label: string; icon: 'cart' | 'restaurant
 };
 
 function BatchCard({ batch, locations, warnDays }: { batch: Batch & { location_name: string | null }; locations: Location[]; warnDays: number }) {
-  const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const requestExpiry = useDrafts((s) => s.requestExpiry);
   const takeExpiry = useDrafts((s) => s.takeExpiry);
@@ -207,6 +206,7 @@ export default function ProductDetail() {
           </Text>
         </Row>
         <Stepper
+          hideValue
           value={p.quantity}
           label={p.name}
           onChange={(v) => {
