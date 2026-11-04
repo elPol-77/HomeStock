@@ -18,7 +18,7 @@ Inventario doméstico inteligente para Android: qué tienes en casa, qué caduca
 
 | Fuente | Para qué | Notas |
 |---|---|---|
-| Catálogo del súper incluido (`assets/catalog/`) | Buscar productos sin conexión, autocompletar listas, precio de referencia | Mercadona, capturas del 04/11/2026: nombre, formato y precio (sin imágenes). Se muestra siempre con su fecha. |
+| Catálogos del súper incluidos (`assets/catalog/`) | Buscar productos sin conexión, autocompletar listas, precio de referencia | Mercadona: 4.153 productos (capturas del 04/11/2026). DIA: 94 básicos de su web pública (04/11/2026). Nombre, formato y precio, sin imágenes; siempre con su fecha. Alcampo bloquea la lectura automática en su robots.txt y Carrefour la rechaza; Consum carga los precios con JavaScript: para esas cadenas, capturas. |
 | Open Food Facts (+ Beauty / Products / Pet Food) | Código de barras y búsqueda | API abierta, con caché local 30 días. |
 | Open Prices | Precios públicos por código de barras | Filtro por distancia y antigüedad. |
 | Tus tickets y precios manuales | Precios reales de tu zona | La fuente más fiable. |
