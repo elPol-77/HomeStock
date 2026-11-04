@@ -1,7 +1,7 @@
 import { all, first, insertRow, nowIso, run, setCurrentHousehold, uuid } from '@/db/client';
 import { emitChange } from '@/db/events';
 
-import { DEFAULT_LOCATIONS } from './types';
+import { DEFAULT_LOCATIONS, LEGACY_ZONE_ICONS } from './types';
 
 export interface Household {
   id: string;
@@ -15,6 +15,10 @@ export async function ensureHousehold(): Promise<Household> {
   const existing = await first<Household>('SELECT id, name, remote, role FROM households ORDER BY created_at LIMIT 1');
   if (existing) {
     setCurrentHousehold(existing.id);
+    // Iconos nuevos para las zonas por defecto (solo si el usuario no los cambió).
+    for (const [oldIcon, newIcon] of Object.entries(LEGACY_ZONE_ICONS)) {
+      await run('UPDATE locations SET icon = ?, dirty = 1, updated_at = ? WHERE icon = ? AND household_id = ?', [newIcon, nowIso(), oldIcon, existing.id]);
+    }
     return existing;
   }
   const id = uuid();

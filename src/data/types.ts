@@ -152,26 +152,42 @@ export interface PriceObservation {
   source_ref: string | null;
 }
 
-export const CATEGORIES: { name: string; icon: string; subcategories: string[] }[] = [
-  { name: 'Lácteos y huevos', icon: 'egg-outline', subcategories: ['Leche', 'Yogures', 'Quesos', 'Huevos', 'Mantequilla'] },
-  { name: 'Frutas y verduras', icon: 'leaf-outline', subcategories: ['Fruta', 'Verdura', 'Hortalizas'] },
-  { name: 'Carne y pescado', icon: 'fish-outline', subcategories: ['Carne', 'Pescado', 'Embutido'] },
-  { name: 'Despensa', icon: 'basket-outline', subcategories: ['Arroz y pasta', 'Legumbres', 'Aceite y vinagre', 'Conservas', 'Harinas', 'Especias', 'Salsas'] },
-  { name: 'Panadería y desayuno', icon: 'cafe-outline', subcategories: ['Pan', 'Cereales', 'Galletas', 'Café e infusiones', 'Cacao'] },
-  { name: 'Congelados', icon: 'snow-outline', subcategories: ['Verduras', 'Pescado', 'Pizzas', 'Helados'] },
-  { name: 'Bebidas', icon: 'wine-outline', subcategories: ['Agua', 'Refrescos', 'Zumos', 'Cerveza', 'Vino'] },
-  { name: 'Limpieza', icon: 'sparkles-outline', subcategories: ['Lejía', 'Multiusos', 'Lavavajillas', 'Fregasuelos', 'Bayetas'] },
-  { name: 'Lavandería', icon: 'shirt-outline', subcategories: ['Detergente', 'Suavizante', 'Quitamanchas'] },
-  { name: 'Higiene personal', icon: 'water-outline', subcategories: ['Gel', 'Champú', 'Dental', 'Desodorante', 'Papel higiénico'] },
-  { name: 'Bebé', icon: 'happy-outline', subcategories: ['Alimentación infantil', 'Pañales', 'Higiene bebé', 'Biberones'] },
-  { name: 'Mascotas', icon: 'paw-outline', subcategories: ['Pienso', 'Comida húmeda', 'Arena', 'Snacks'] },
-  { name: 'Otros', icon: 'cube-outline', subcategories: [] },
+export const CATEGORIES: { name: string; icon: string; tint: string; subcategories: string[] }[] = [
+  { name: 'Lácteos y huevos', icon: 'mci:cheese', tint: '#E9B949', subcategories: ['Leche', 'Yogures', 'Quesos', 'Huevos', 'Mantequilla'] },
+  { name: 'Frutas y verduras', icon: 'mci:food-apple-outline', tint: '#5FA35A', subcategories: ['Fruta', 'Verdura', 'Hortalizas'] },
+  { name: 'Carne y pescado', icon: 'mci:food-drumstick-outline', tint: '#D9705B', subcategories: ['Carne', 'Pescado', 'Embutido'] },
+  { name: 'Despensa', icon: 'mci:pasta', tint: '#C08A4E', subcategories: ['Arroz y pasta', 'Legumbres', 'Aceite y vinagre', 'Conservas', 'Harinas', 'Especias', 'Salsas'] },
+  { name: 'Panadería y desayuno', icon: 'mci:baguette', tint: '#B9783F', subcategories: ['Pan', 'Cereales', 'Galletas', 'Café e infusiones', 'Cacao'] },
+  { name: 'Congelados', icon: 'mci:snowflake', tint: '#4D9CC7', subcategories: ['Verduras', 'Pescado', 'Pizzas', 'Helados'] },
+  { name: 'Bebidas', icon: 'mci:bottle-wine-outline', tint: '#8E5BA8', subcategories: ['Agua', 'Refrescos', 'Zumos', 'Cerveza', 'Vino'] },
+  { name: 'Limpieza', icon: 'mci:spray-bottle', tint: '#3FA6A0', subcategories: ['Lejía', 'Multiusos', 'Lavavajillas', 'Fregasuelos', 'Bayetas'] },
+  { name: 'Lavandería', icon: 'mci:washing-machine', tint: '#5B7FC7', subcategories: ['Detergente', 'Suavizante', 'Quitamanchas'] },
+  { name: 'Higiene personal', icon: 'mci:lotion-outline', tint: '#D46F9C', subcategories: ['Gel', 'Champú', 'Dental', 'Desodorante', 'Papel higiénico'] },
+  { name: 'Bebé', icon: 'mci:baby-bottle-outline', tint: '#E58FB1', subcategories: ['Alimentación infantil', 'Pañales', 'Higiene bebé', 'Biberones'] },
+  { name: 'Mascotas', icon: 'mci:paw-outline', tint: '#A0785A', subcategories: ['Pienso', 'Comida húmeda', 'Arena', 'Snacks'] },
+  { name: 'Otros', icon: 'mci:package-variant-closed', tint: '#7D8B84', subcategories: [] },
 ];
 
 export const DEFAULT_LOCATIONS: { name: string; icon: string }[] = [
-  { name: 'Nevera', icon: 'thermometer-outline' },
-  { name: 'Congelador', icon: 'snow-outline' },
-  { name: 'Despensa', icon: 'file-tray-stacked-outline' },
-  { name: 'Armario de limpieza', icon: 'sparkles-outline' },
-  { name: 'Baño', icon: 'water-outline' },
+  { name: 'Nevera', icon: 'mci:fridge-outline' },
+  { name: 'Congelador', icon: 'mci:snowflake' },
+  { name: 'Despensa', icon: 'mci:cupboard-outline' },
+  { name: 'Armario de limpieza', icon: 'mci:spray-bottle' },
+  { name: 'Baño', icon: 'mci:shower-head' },
+];
+
+/** Iconos antiguos de las zonas por defecto → iconos nuevos (migración visual). */
+export const LEGACY_ZONE_ICONS: Record<string, string> = {
+  'thermometer-outline': 'mci:fridge-outline',
+  'snow-outline': 'mci:snowflake',
+  'file-tray-stacked-outline': 'mci:cupboard-outline',
+  'sparkles-outline': 'mci:spray-bottle',
+  'water-outline': 'mci:shower-head',
+};
+
+/** Iconos para elegir al crear o editar una zona. */
+export const ZONE_ICONS = [
+  'mci:fridge-outline', 'mci:snowflake', 'mci:cupboard-outline', 'mci:countertop-outline', 'mci:spray-bottle', 'mci:shower-head',
+  'mci:toilet', 'mci:wardrobe-outline', 'mci:archive-outline', 'mci:garage-variant', 'mci:sofa-outline', 'mci:bed-outline',
+  'mci:basket-outline', 'mci:glass-wine', 'mci:paw-outline', 'mci:baby-bottle-outline', 'mci:home-variant-outline',
 ];

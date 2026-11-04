@@ -1,15 +1,28 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { ComponentProps, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 
+import { AppIcon } from '@/components/ui/AppIcon';
 import { CATEGORIES } from '@/data/types';
 import { useTheme } from '@/theme/ThemeProvider';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export function categoryIcon(category: string | null | undefined): IconName {
-  return (CATEGORIES.find((c) => c.name === category)?.icon ?? 'cube-outline') as IconName;
+export function categoryIcon(category: string | null | undefined): string {
+  return CATEGORIES.find((c) => c.name === category)?.icon ?? 'mci:package-variant-closed';
+}
+
+export function categoryTint(category: string | null | undefined): string {
+  return CATEGORIES.find((c) => c.name === category)?.tint ?? '#7D8B84';
+}
+
+/** Icono de categoría en un círculo de su color. */
+export function CategoryBadge({ category, size = 40 }: { category: string | null | undefined; size?: number }) {
+  const tint = categoryTint(category);
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: `${tint}22`, alignItems: 'center', justifyContent: 'center' }}>
+      <AppIcon name={categoryIcon(category)} size={size * 0.55} color={tint} />
+    </View>
+  );
 }
 
 /** Foto del producto con respaldo de icono de categoría si no hay imagen o falla la carga. */
@@ -33,8 +46,8 @@ export function ProductThumb({ uri, category, size = 52 }: { uri?: string | null
     );
   }
   return (
-    <View style={{ width: size, height: size, borderRadius: r, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-      <Ionicons name={categoryIcon(category)} size={size * 0.46} color={colors.primary} />
+    <View style={{ width: size, height: size, borderRadius: r, backgroundColor: `${categoryTint(category)}1F`, alignItems: 'center', justifyContent: 'center' }}>
+      <AppIcon name={categoryIcon(category)} size={size * 0.5} color={categoryTint(category)} />
     </View>
   );
 }

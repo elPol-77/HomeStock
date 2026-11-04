@@ -17,7 +17,8 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 const TABS: Record<string, { label: string; icon: IconName; active: IconName }> = {
   index: { label: 'Inicio', icon: 'home-outline', active: 'home' },
   inventory: { label: 'Inventario', icon: 'file-tray-stacked-outline', active: 'file-tray-stacked' },
-  shop: { label: 'Comprar', icon: 'cart-outline', active: 'cart' },
+  shop: { label: 'Listas', icon: 'cart-outline', active: 'cart' },
+  catalog: { label: 'Productos', icon: 'grid-outline', active: 'grid' },
   prices: { label: 'Precios', icon: 'pricetags-outline', active: 'pricetags' },
   profile: { label: 'Perfil', icon: 'person-circle-outline', active: 'person-circle' },
 };
@@ -38,8 +39,8 @@ function TabButton({ focused, label, icon, onPress }: { focused: boolean; label:
       onPress={onPress}
       scaleTo={0.92}
       style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, gap: 3 }}>
-      <View style={{ width: 56, height: 32, alignItems: 'center', justifyContent: 'center' }}>
-        <Animated.View style={[{ position: 'absolute', width: 56, height: 32, borderRadius: 16, backgroundColor: colors.primarySoft }, pill]} />
+      <View style={{ width: 48, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View style={[{ position: 'absolute', width: 48, height: 32, borderRadius: 16, backgroundColor: colors.primarySoft }, pill]} />
         <Animated.View style={iconStyle}>
           <Ionicons name={icon} size={22} color={focused ? colors.primary : colors.textMuted} />
         </Animated.View>
@@ -103,6 +104,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="inventory" />
       <Tabs.Screen name="shop" />
+      <Tabs.Screen name="catalog" />
       <Tabs.Screen name="prices" />
       <Tabs.Screen name="profile" />
     </Tabs>

@@ -1,3 +1,4 @@
+export * from './AppIcon';
 export * from './Button';
 export * from './Card';
 export * from './Chip';

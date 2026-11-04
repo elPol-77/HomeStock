@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
 import { first, nowIso, run } from '@/db/client';
+import { categorizeByName, categorizeByTags } from '@/domain/categorize';
 import { normalizeText } from '@/domain/text';
 import { parsePackageSize, toUnit } from '@/domain/units';
 
@@ -61,15 +62,7 @@ export function mapCategory(tags: string[] | undefined, source: CatalogSource): 
     if (/toilet-paper|tissue|hygiene/.test(t)) return 'Higiene personal';
     return 'Otros';
   }
-  if (/frozen/.test(t)) return 'Congelados';
-  if (/dairies|milks|yogurts|cheeses|eggs|butters/.test(t)) return 'Lácteos y huevos';
-  if (/fresh-fruits|fresh-vegetables|fruits-based|vegetables-based|^en:fruits|en:vegetables/.test(t) && !/juices|canned/.test(t)) return 'Frutas y verduras';
-  if (/meats|fishes|seafood|hams|sausages|poultries/.test(t)) return 'Carne y pescado';
-  if (/beverages|waters|sodas|juices|beers|wines/.test(t)) return 'Bebidas';
-  if (/breads|breakfast|cereals-and-their-products|biscuits|coffees|teas|cocoa|pastries/.test(t)) return 'Panadería y desayuno';
-  if (/pet-food|cat-food|dog-food/.test(t)) return 'Mascotas';
-  if (tags && tags.length) return 'Despensa';
-  return null;
+  return categorizeByTags(tags);
 }
 
 function toCatalogProduct(p: any, source: CatalogSource, host: string): CatalogProduct | null {
@@ -89,7 +82,7 @@ function toCatalogProduct(p: any, source: CatalogSource, host: string): CatalogP
     imageUrl: p.image_front_url ?? p.image_front_small_url ?? null,
     quantityText: p.quantity ?? null,
     pkg,
-    category: mapCategory(p.categories_tags, source),
+    category: mapCategory(p.categories_tags, source) ?? categorizeByName(name),
     packaging: typeof p.packaging === 'string' ? p.packaging.split(',')[0].trim() || null : null,
     url: p.code ? `${host}/product/${p.code}` : null,
   };

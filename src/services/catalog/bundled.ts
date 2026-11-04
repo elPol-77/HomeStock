@@ -28,6 +28,10 @@ interface RawItem {
   c: string;
   /** Sección de la tienda. */
   s: string | null;
+  /** Foto de Open Food Facts emparejada (CC BY-SA), si la hay. */
+  i?: string | null;
+  /** Código de barras de Open Food Facts, solo si el emparejamiento es seguro. */
+  e?: string | null;
 }
 
 interface RawCatalog {
@@ -59,6 +63,8 @@ export interface BundledItem {
   section: string | null;
   capturedAt: string;
   sourceNote: string;
+  imageUrl: string | null;
+  barcode: string | null;
   tokens: string[];
   norm: string;
 }
@@ -86,6 +92,8 @@ export function bundledItems(): BundledItem[] {
         section: r.s,
         capturedAt: cat.capturedAt,
         sourceNote: cat.source,
+        imageUrl: r.i ?? null,
+        barcode: r.e ?? null,
         tokens: tokenize(`${r.n} ${r.s ?? ''}`),
         norm: normalizeText(`${r.n} ${r.f ?? ''}`),
       });
@@ -147,10 +155,10 @@ export function priceUnitLabel(item: BundledItem): string {
 export function bundledToCatalogProduct(item: BundledItem): CatalogProduct {
   return {
     source: 'store',
-    barcode: null,
+    barcode: item.barcode,
     name: item.name,
     brand: item.brand,
-    imageUrl: null,
+    imageUrl: item.imageUrl,
     quantityText: item.format,
     pkg: item.pkg,
     category: item.category,
@@ -188,4 +196,9 @@ export function matchBundled(target: { name: string; brand?: string | null; barc
   }
   alts.sort((a, b) => b.score - a.score);
   return [...out, ...alts.slice(0, maxAlternatives)];
+}
+
+/** Busca un código de barras en los catálogos incluidos (solo existe si el emparejamiento con Open Food Facts fue seguro). */
+export function bundledByBarcode(code: string): BundledItem | undefined {
+  return bundledItems().find((i) => i.barcode === code);
 }

@@ -5,6 +5,7 @@ import { StyleProp, View, ViewStyle } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius } from '@/theme/tokens';
 
+import { AppIcon } from './AppIcon';
 import { ScalePressable } from './Pressable';
 import { Text } from './Text';
 
@@ -14,6 +15,7 @@ export function Chip({
   label,
   selected,
   onPress,
+  onLongPress,
   icon,
   count,
   style,
@@ -21,7 +23,8 @@ export function Chip({
   label: string;
   selected?: boolean;
   onPress?: () => void;
-  icon?: IconName;
+  onLongPress?: () => void;
+  icon?: IconName | `mci:${string}`;
   count?: number;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -33,6 +36,7 @@ export function Chip({
       accessibilityLabel={count != null ? `${label}, ${count}` : label}
       hapticOnPress
       onPress={onPress}
+      onLongPress={onLongPress}
       style={[
         {
           flexDirection: 'row',
@@ -47,7 +51,7 @@ export function Chip({
         },
         style,
       ]}>
-      {icon ? <Ionicons name={icon} size={15} color={selected ? colors.background : colors.textMuted} /> : null}
+      {icon ? <AppIcon name={icon} size={16} color={selected ? colors.background : colors.textMuted} /> : null}
       <Text variant="caption" style={{ color: selected ? colors.background : colors.text }}>
         {label}
       </Text>

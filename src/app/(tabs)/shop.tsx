@@ -37,7 +37,7 @@ export default function Shop() {
   };
 
   return (
-    <Screen title="Comprar" subtitle="Tus listas, sugerencias y compras" right={<Button title="Nueva lista" size="sm" icon="add" onPress={() => setCreating((c) => !c)} />}>
+    <Screen title="Listas" subtitle="Tus listas, sugerencias y compras" right={<Button title="Nueva lista" size="sm" icon="add" onPress={() => setCreating((c) => !c)} />}>
       {creating ? (
         <Animated.View entering={reduceMotion ? undefined : FadeInDown.springify().damping(18)}>
           <Card tone="primary" style={{ gap: 12 }}>

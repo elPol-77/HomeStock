@@ -1,14 +1,20 @@
+import { updateRow } from '@/db/client';
 import { addListItem } from '@/data/lists';
 import { createProduct, getProduct, matchExistingProduct } from '@/data/products';
 import { BundledItem, packagePrice } from '@/services/catalog/bundled';
 
 /** Devuelve el producto del hogar que corresponde a un artículo del catálogo, creándolo (sin stock) si no existe. */
 export async function productFromBundled(item: BundledItem): Promise<string> {
-  const existing = await matchExistingProduct({ name: item.name, brand: item.brand, pkg: item.pkg });
-  if (existing) return existing.id;
+  const existing = await matchExistingProduct({ name: item.name, brand: item.brand, barcode: item.barcode, pkg: item.pkg });
+  if (existing) {
+    if (!existing.image_url && item.imageUrl) await updateRow('products', existing.id, { image_url: item.imageUrl });
+    return existing.id;
+  }
   return createProduct({
     name: item.name,
     brand: item.brand,
+    barcode: item.barcode,
+    image_url: item.imageUrl,
     category: item.category,
     subcategory: item.section,
     package_count: item.pkg?.count ?? null,

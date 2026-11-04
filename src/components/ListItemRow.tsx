@@ -57,7 +57,7 @@ export const ListItemRow = memo(function ListItemRow({ item, mode }: { item: Lis
         opacity: checked ? 0.75 : 1,
       }}>
       <Checkbox checked={checked} onToggle={() => setItemChecked(item.id, !checked)} label={`${item.name}${checked ? ', en el carro' : ''}`} />
-      {mode === 'shop' ? <ProductThumb uri={item.image_url} category={item.category} size={44} /> : null}
+      <ProductThumb uri={item.image_url} category={item.category} size={mode === 'shop' ? 56 : 40} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant={mode === 'shop' ? 'subheading' : 'bodyStrong'} numberOfLines={2} style={checked ? { textDecorationLine: 'line-through' } : undefined}>
           {item.name}

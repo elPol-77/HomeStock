@@ -12,7 +12,9 @@ import { lastPaidPrice } from '@/data/prices';
 import { findProductByBarcode, getProductWithStock } from '@/data/products';
 import type { ProductWithStock } from '@/data/types';
 import { isValidEan } from '@/domain/recognition';
+import { bundledByBarcode, bundledToCatalogProduct } from '@/services/catalog/bundled';
 import { lookupBarcode } from '@/services/catalog/openFoodFacts';
+import { storeName } from '@/services/catalog/stores';
 import { draftFromCatalog, useDrafts } from '@/services/drafts';
 import { haptic } from '@/services/haptics';
 import { incrementProduct } from '@/services/inventoryActions';
@@ -47,9 +49,10 @@ export default function BarcodeScanner() {
         let name = local?.name;
         let category = local?.category ?? null;
         if (!local) {
-          const remote = await lookupBarcode(code).catch(() => null);
-          name = remote ? [remote.name, remote.brand].filter(Boolean).join(' ') : `Producto ${code}`;
-          category = remote?.category ?? null;
+          const fromStore = bundledByBarcode(code);
+          const remote = fromStore ? null : await lookupBarcode(code).catch(() => null);
+          name = fromStore ? fromStore.name : remote ? [remote.name, remote.brand].filter(Boolean).join(' ') : `Producto ${code}`;
+          category = fromStore?.category ?? remote?.category ?? null;
         }
         await addListItem(listId, { productId: local?.id ?? null, name: name!, category, estimatedPrice: local ? await lastPaidPrice(local.id) : null });
         toast(`${name} añadido a la lista`);
@@ -61,9 +64,18 @@ export default function BarcodeScanner() {
         setBusy(false);
         return;
       }
-      const remote = await lookupBarcode(code);
+      let offline = false;
+      const remote = await lookupBarcode(code).catch(() => {
+        offline = true;
+        return null;
+      });
+      const fromStore = bundledByBarcode(code);
+      if (!remote && !fromStore && offline) throw new Error('offline');
       if (remote) {
-        setDraft(draftFromCatalog(remote, 'barcode'));
+        // Open Food Facts da los datos del envase; si el súper lo tiene en su catálogo, su categoría es más fiable.
+        setDraft(draftFromCatalog({ ...remote, category: fromStore?.category ?? remote.category }, 'barcode'));
+      } else if (fromStore) {
+        setDraft(draftFromCatalog(bundledToCatalogProduct(fromStore), 'barcode', `Encontrado en el catálogo de ${storeName(fromStore.store)}. Revisa los datos y añade la caducidad.`));
       } else {
         setDraft({
           name: '', brand: null, barcode: code, imageUrl: null, category: null, pkg: null, packaging: null, sourceLabel: null, sourceUrl: null, origin: 'barcode',

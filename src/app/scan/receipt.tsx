@@ -118,7 +118,7 @@ export default function ReceiptScan() {
             quantity: qty,
             totalPrice: Number.isNaN(t) ? null : t,
             discount: l.discount,
-            locationId: guessLocation(product?.category, locations, product?.default_location_id),
+            locationId: guessLocation(product?.category, locations, product?.default_location_id, product?.name),
             addToInventory: toInventory,
           };
         }),

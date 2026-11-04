@@ -80,7 +80,7 @@ export default function Profile() {
       <Card style={{ gap: 0, paddingVertical: 4 }}>
         <ListRow icon="people-outline" title="Hogar y familia" subtitle="Nombre, miembros e invitaciones" onPress={() => router.push('/settings/household')} />
         <Divider />
-        <ListRow icon="file-tray-stacked-outline" title="Ubicaciones" subtitle="Nevera, despensa, baño…" onPress={() => router.push('/settings/locations')} />
+        <ListRow icon="file-tray-stacked-outline" title="Zonas de casa" subtitle="Nevera, despensa, baño… (editables)" onPress={() => router.push('/settings/locations')} />
         <Divider />
         <ListRow icon="storefront-outline" title="Tiendas y precios" subtitle="Ubicación, favoritas, distancia" onPress={() => router.push('/settings/stores')} />
         <Divider />

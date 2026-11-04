@@ -49,8 +49,7 @@ export default function Inventory() {
             Inventario
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton icon="options-outline" label="Gestionar ubicaciones" onPress={() => router.push('/settings/locations')} />
-            <IconButton icon="barcode-outline" label="Escanear producto" tone="primary" onPress={() => router.push('/scan/barcode')} />
+                        <IconButton icon="barcode-outline" label="Escanear producto" tone="primary" onPress={() => router.push('/scan/barcode')} />
           </View>
         </View>
         <TextField icon="search" placeholder="Buscar en casa" value={search} onChangeText={setSearch} returnKeyType="search" clearButtonMode="while-editing" accessibilityLabel="Buscar productos" />
@@ -58,8 +57,17 @@ export default function Inventory() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }} style={{ marginHorizontal: -20, paddingLeft: 20, flexGrow: 0 }}>
           <Chip label="Todas" selected={location === null} onPress={() => setLocation(null)} icon="home-outline" />
           {(locations.data ?? []).map((l) => (
-            <Chip key={l.id} label={l.name} icon={l.icon as never} count={counts.data?.[l.id] ?? 0} selected={location === l.id} onPress={() => setLocation(location === l.id ? null : l.id)} />
+            <Chip
+              key={l.id}
+              label={l.name}
+              icon={l.icon as never}
+              count={counts.data?.[l.id] ?? 0}
+              selected={location === l.id}
+              onPress={() => setLocation(location === l.id ? null : l.id)}
+              onLongPress={() => router.push({ pathname: '/settings/locations', params: { edit: l.id } })}
+            />
           ))}
+          <Chip label="Editar zonas" icon="create-outline" onPress={() => router.push('/settings/locations')} />
         </ScrollView>
       </View>
 

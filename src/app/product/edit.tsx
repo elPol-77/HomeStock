@@ -1,17 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { DateField, ExpiryKindPicker, StorePicker } from '@/components/Pickers';
-import { ProductThumb } from '@/components/ProductThumb';
-import { Badge, Button, Card, Chip, Row, Screen, SectionTitle, Stepper, Text, TextField } from '@/components/ui';
+import { CategoryBadge, ProductThumb } from '@/components/ProductThumb';
+import { Badge, Button, Card, Chip, Row, ScalePressable, Screen, SectionTitle, Stepper, Text, TextField } from '@/components/ui';
 import { transaction } from '@/db/client';
 import { addPriceObservation } from '@/data/prices';
 import { createProduct, getProduct, listLocations, matchExistingProduct, updateProduct } from '@/data/products';
 import { addStockRaw } from '@/data/stock';
 import { CATEGORIES, Location } from '@/data/types';
+import { categorizeByName, suggestZone } from '@/domain/categorize';
 import { ExpiryKind } from '@/domain/expiry';
 import { parseDecimal } from '@/domain/text';
 import { parsePackageSize, Unit, UNIT_SHORT } from '@/domain/units';
@@ -19,6 +20,7 @@ import { useDrafts } from '@/services/drafts';
 import { haptic } from '@/services/haptics';
 import { toast } from '@/services/toast';
 import { useTheme } from '@/theme/ThemeProvider';
+import { radius } from '@/theme/tokens';
 
 const PKG_UNITS: Unit[] = ['ud', 'g', 'kg', 'ml', 'l'];
 
@@ -42,6 +44,9 @@ export default function ProductEdit() {
   const [pkgCount, setPkgCount] = useState(1);
   const [packaging, setPackaging] = useState('');
   const [locationId, setLocationId] = useState<string | null>(null);
+  // Si el usuario elige a mano, dejamos de proponer automáticamente.
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [zoneTouched, setZoneTouched] = useState(false);
   const [minQty, setMinQty] = useState(1);
   const [usualQty, setUsualQty] = useState(0);
   const [notes, setNotes] = useState('');
@@ -60,7 +65,7 @@ export default function ProductEdit() {
   useEffect(() => {
     listLocations().then((l) => {
       setLocations(l);
-      if (isNew && !locationId) setLocationId(l[0]?.id ?? null);
+      // La zona se propone abajo según categoría y nombre.
     });
     if (id) {
       getProduct(id).then((p) => {
@@ -96,6 +101,19 @@ export default function ProductEdit() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Categoría automática por el nombre mientras el usuario no elija una.
+  useEffect(() => {
+    if (!isNew || categoryTouched || (category && fromDraft)) return;
+    const guess = categorizeByName(name);
+    if (guess) setCategory(guess);
+  }, [name, isNew, categoryTouched, category, fromDraft]);
+
+  // Zona propuesta según categoría y nombre (nevera para lácteos, congelador para congelados…).
+  const zoneSuggestion = useMemo(() => suggestZone({ name, category }, locations), [name, category, locations]);
+  useEffect(() => {
+    if (isNew && !zoneTouched && zoneSuggestion) setLocationId(zoneSuggestion.id);
+  }, [isNew, zoneTouched, zoneSuggestion]);
 
   // Al crear, si ya existe un producto equivalente, avisar para no duplicar.
   useEffect(() => {
@@ -221,11 +239,44 @@ export default function ProductEdit() {
       </Row>
 
       <SectionTitle title="Categoría" />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {CATEGORIES.map((c) => (
-          <Chip key={c.name} label={c.name} icon={c.icon as never} selected={category === c.name} onPress={() => setCategory(category === c.name ? null : c.name)} />
-        ))}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }} accessibilityRole="radiogroup">
+        {CATEGORIES.map((c) => {
+          const sel = category === c.name;
+          return (
+            <ScalePressable
+              key={c.name}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: sel }}
+              accessibilityLabel={c.name}
+              hapticOnPress
+              onPress={() => {
+                setCategoryTouched(true);
+                setCategory(sel ? null : c.name);
+              }}
+              style={{
+                width: '31.5%',
+                alignItems: 'center',
+                gap: 6,
+                paddingVertical: 10,
+                paddingHorizontal: 4,
+                borderRadius: radius.md,
+                borderWidth: sel ? 2 : 1,
+                borderColor: sel ? c.tint : colors.border,
+                backgroundColor: sel ? `${c.tint}1A` : colors.surface,
+              }}>
+              <CategoryBadge category={c.name} size={38} />
+              <Text variant="caption" numberOfLines={2} style={{ textAlign: 'center', fontWeight: sel ? '700' : '400' }}>
+                {c.name}
+              </Text>
+            </ScalePressable>
+          );
+        })}
       </View>
+      {isNew && category && !categoryTouched ? (
+        <Text variant="caption" color="textMuted">
+          Categoría propuesta automáticamente. Tócala para cambiarla.
+        </Text>
+      ) : null}
 
       <SectionTitle title="Formato del envase" />
       <Row>
@@ -242,12 +293,29 @@ export default function ProductEdit() {
       </Row>
       <TextField label="Tipo de envase" placeholder="Brik, botella, bolsa…" value={packaging} onChangeText={setPackaging} />
 
-      <SectionTitle title="Dónde se guarda" />
+      <SectionTitle title="Dónde se guarda" action="Editar zonas" onAction={() => router.push('/settings/locations')} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {locations.map((l) => (
-          <Chip key={l.id} label={l.name} icon={l.icon as never} selected={locationId === l.id} onPress={() => setLocationId(l.id)} />
+          <Chip
+            key={l.id}
+            label={l.name}
+            icon={l.icon as never}
+            selected={locationId === l.id}
+            onPress={() => {
+              setZoneTouched(true);
+              setLocationId(l.id);
+            }}
+          />
         ))}
       </View>
+      {isNew && !zoneTouched && zoneSuggestion && locationId === zoneSuggestion.id ? (
+        <Row gap={6}>
+          <Ionicons name="bulb-outline" size={14} color={colors.textMuted} />
+          <Text variant="caption" color="textMuted" style={{ flex: 1 }}>
+            Te proponemos {locations.find((l) => l.id === locationId)?.name} porque {zoneSuggestion.reason}.
+          </Text>
+        </Row>
+      ) : null}
 
       <SectionTitle title="Reposición" />
       <Card style={{ gap: 14 }}>

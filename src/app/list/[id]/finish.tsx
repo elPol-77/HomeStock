@@ -62,7 +62,7 @@ export default function FinishPurchase() {
               price: item.actual_price ?? item.estimated_price ? String(item.actual_price ?? item.estimated_price).replace('.', ',') : '',
               expiry: null,
               kind: 'use_by',
-              locationId: guessLocation(product?.category ?? item.category, locs, product?.default_location_id),
+              locationId: guessLocation(product?.category ?? item.category, locs, product?.default_location_id, product?.name ?? item.name),
               addToInventory: true,
               expanded: false,
             };
