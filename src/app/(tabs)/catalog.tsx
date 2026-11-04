@@ -203,7 +203,9 @@ export default function Catalog() {
           </View>
         )}
         initialNumToRender={10}
-        windowSize={7}
+        maxToRenderPerBatch={12}
+        windowSize={9}
+        removeClippedSubviews
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         ListEmptyComponent={

@@ -4,6 +4,7 @@ import { ComponentProps, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { GettingStarted } from '@/components/GettingStarted';
 import { ProductThumb } from '@/components/ProductThumb';
 import { AnimatedNumber, Badge, Button, Card, EmptyState, ProgressBar, Row, ScalePressable, Screen, SectionTitle, Skeleton, Text } from '@/components/ui';
 import { useLiveQuery } from '@/db/events';
@@ -116,6 +117,8 @@ export default function Home() {
           />
         ) : null}
       </Animated.View>
+
+      <GettingStarted />
 
       <Animated.View entering={enter(1)}>
         <Card elevated style={{ flexDirection: 'row', paddingVertical: 18 }}>

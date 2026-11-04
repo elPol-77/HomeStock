@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { View } from 'react-native';
 
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -34,29 +34,34 @@ export function imageSource(uri: string | null | undefined): number | { uri: str
 }
 
 /** Foto del producto con respaldo de icono de categoría si no hay imagen o falla la carga. */
-export function ProductThumb({ uri, category, size = 52 }: { uri?: string | null; category?: string | null; size?: number }) {
+/**
+ * Foto del producto con el icono de su categoría debajo: mientras la foto llega (o si no hay / falla)
+ * se ve el icono, nunca un hueco en blanco. Las fotos incluidas en la app salen al instante;
+ * las de internet se guardan en memoria y disco para que la segunda vez también sean instantáneas.
+ */
+export const ProductThumb = memo(function ProductThumb({ uri, category, size = 52 }: { uri?: string | null; category?: string | null; size?: number }) {
   const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
   const r = size * 0.27;
-  const source = imageSource(uri);
-  if (source && !failed) {
-    return (
-      <View style={{ width: size, height: size, borderRadius: r, backgroundColor: '#FFFFFF', overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+  const source = failed ? null : imageSource(uri);
+  const local = typeof source === 'number';
+  const tint = categoryTint(category);
+  return (
+    <View style={{ width: size, height: size, borderRadius: r, overflow: 'hidden', backgroundColor: source ? '#FFFFFF' : `${tint}1F`, borderWidth: source ? 1 : 0, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+      {!local ? <AppIcon name={categoryIcon(category)} size={size * 0.5} color={tint} /> : null}
+      {source ? (
         <Image
           source={source}
-          style={{ width: '100%', height: '100%' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           contentFit="contain"
-          transition={180}
-          cachePolicy="disk"
+          transition={local ? 0 : 120}
+          cachePolicy="memory-disk"
+          priority="high"
+          recyclingKey={uri ?? undefined}
           onError={() => setFailed(true)}
           accessibilityIgnoresInvertColors
         />
-      </View>
-    );
-  }
-  return (
-    <View style={{ width: size, height: size, borderRadius: r, backgroundColor: `${categoryTint(category)}1F`, alignItems: 'center', justifyContent: 'center' }}>
-      <AppIcon name={categoryIcon(category)} size={size * 0.5} color={categoryTint(category)} />
+      ) : null}
     </View>
   );
-}
+});

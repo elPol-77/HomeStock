@@ -4,6 +4,7 @@ import { getSetting, setSetting } from '@/db/client';
 
 export interface AppSettings {
   onboarded: boolean;
+  hideGettingStarted: boolean;
   userName: string;
   themeMode: 'system' | 'light' | 'dark';
   reduceMotion: 'system' | 'on' | 'off';
@@ -34,6 +35,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   onboarded: false,
+  hideGettingStarted: false,
   userName: '',
   themeMode: 'system',
   reduceMotion: 'system',
