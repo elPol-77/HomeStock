@@ -84,6 +84,8 @@ export default function Profile() {
         <Divider />
         <ListRow icon="storefront-outline" title="Tiendas y precios" subtitle="Ubicación, favoritas, distancia" onPress={() => router.push('/settings/stores')} />
         <Divider />
+        <ListRow icon="sparkles-outline" title="IA para fotos" subtitle="Clave gratuita de Gemini para la foto de la nevera" onPress={() => router.push('/settings/vision')} />
+        <Divider />
         <ListRow icon="stats-chart-outline" title="Estadísticas" subtitle="Gasto, consumo y ahorro" onPress={() => router.push('/stats')} />
       </Card>
 

@@ -18,7 +18,8 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 
 const OPTIONS: { icon: IconName; title: string; text: string; href: string; tone: 'primary' | 'accent' | 'info' | 'alt' }[] = [
   { icon: 'barcode-outline', title: 'Escanear código de barras', text: 'La forma más rápida y fiable', href: '/scan/barcode', tone: 'primary' },
-  { icon: 'camera-outline', title: 'Hacer una foto', text: 'Reconoce el producto por su envase', href: '/scan/photo', tone: 'accent' },
+  { icon: 'sparkles-outline', title: 'Foto de la nevera o despensa', text: 'Reconoce muchos productos de una vez con IA', href: '/scan/fridge', tone: 'primary' },
+  { icon: 'camera-outline', title: 'Hacer una foto a un producto', text: 'Reconoce el producto por su envase', href: '/scan/photo', tone: 'accent' },
   { icon: 'receipt-outline', title: 'Escanear un ticket', text: 'Añade toda la compra de golpe', href: '/scan/receipt', tone: 'info' },
   { icon: 'create-outline', title: 'Crear a mano', text: 'Para productos sin código (fruta, a granel…)', href: '/product/edit', tone: 'alt' },
 ];

@@ -17,9 +17,11 @@ export function CaptureCamera({
   frame = 'wide',
   busy,
   onCapture,
+  privacyText,
 }: {
   title: string;
   hint: string;
+  privacyText?: string;
   frame?: 'wide' | 'tall' | 'square';
   busy?: boolean;
   onCapture: (uri: string) => void;
@@ -48,7 +50,7 @@ export function CaptureCamera({
         <EmptyState
           icon="camera-outline"
           title="Necesitamos la cámara"
-          text="La foto se procesa en tu móvil para leer el texto. No se envía a ningún servidor."
+          text={privacyText ?? 'La foto se procesa en tu móvil para leer el texto. No se envía a ningún servidor.'}
           actionLabel={permission.canAskAgain ? 'Permitir cámara' : undefined}
           onAction={permission.canAskAgain ? requestPermission : undefined}
           secondaryLabel="Elegir de la galería"

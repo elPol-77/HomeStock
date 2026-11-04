@@ -5,6 +5,8 @@ Inventario doméstico inteligente para Android: qué tienes en casa, qué caduca
 ## Qué hace
 
 - **Inventario** por lotes (cantidad, caducidad, ubicación, mínimo), botones + / −, consumo FEFO (primero lo que antes caduca), sin duplicados al volver a comprar.
+- **Foto de la nevera o despensa** con IA (Google Gemini, plan gratuito con tu propia clave): reconoce muchos productos de una foto, tú confirmas cuáles guardar, cuántos y en qué zona. La clave se guarda cifrada en el móvil; la foto se envía a Google.
+- **Pestaña Súper**: catálogo de los supermercados con foto (Open Food Facts), filtros por cadena y categoría, precio por kg/L y botón para añadir a la lista.
 - **Añadir productos** de 5 formas: catálogo del súper (sin conexión), código de barras (Open Food Facts y bases hermanas), foto del envase (OCR en el móvil + catálogo, siempre indicando el grado de certeza), ticket de compra (OCR) o a mano.
 - **Fecha de caducidad por OCR**: distingue «consumir antes de» (seguridad) de «consumir preferentemente» (calidad); pasado el consumo preferente **no** se marca como peligroso.
 - **Notificaciones locales**: caducidad (agrupadas por día), stock bajo, agotado, recordatorio de compra y ahorro. Canales Android independientes.
