@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HomeStock · Inventario de casa, lista de la compra y comparador de precios</title>
+<meta name="description" content="App gratuita para Android: sabe lo que tienes en casa, te avisa antes de que caduque, hace la lista de la compra sola y compara precios de Mercadona, Consum y DIA, también con marcas blancas.">
+<meta property="og:title" content="HomeStock · Deja de comprar lo que ya tienes">
+<meta property="og:description" content="Inventario de casa, avisos de caducidad, lista compartida y comparador de precios con marcas blancas. Gratis para Android.">
+<meta property="og:image" content="https://pablobenlloch.es/proyectos/homestock/img/compartir.jpg">
+<meta property="og:url" content="https://pablobenlloch.es/proyectos/homestock/">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#10251A">
+<link rel="icon" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/icono.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --tinta: #10251A;
+    --hoja: #2E7A55;
+    --hoja-oscura: #22603F;
+    --menta: #DDEEE3;
+    --papel: #FBFCFA;
+    --gris: #5A6B61;
+    --linea: #DCE3DE;
+    --etiqueta: #FFD23F;
+    --sello: #C8402F;
+    --display: 'Bricolage Grotesque', system-ui, sans-serif;
+    --texto: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --tique: 'Courier Prime', 'Courier New', monospace;
+    --ancho: 1120px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; overflow-x: clip; background: var(--papel); color: var(--tinta); font: 400 17px/1.6 var(--texto); -webkit-font-smoothing: antialiased; }
+  img { max-width: 100%; display: block; }
+  a { color: var(--hoja-oscura); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--etiqueta); outline-offset: 3px; border-radius: 6px; }
+  .envoltura { max-width: var(--ancho); margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: var(--display); line-height: 1.05; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+  h2 { font-size: clamp(32px, 4.4vw, 52px); font-weight: 800; max-width: 18ch; }
+  h3 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  p { margin: 0; }
+  .intro { color: var(--gris); max-width: 60ch; margin-top: 16px; font-size: 18px; }
+
+  /* Cabecera */
+  .barra { display: flex; align-items: center; justify-content: space-between; padding-block: 20px; }
+  .marca { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--tinta); text-decoration: none; }
+  .marca img { width: 36px; height: 36px; border-radius: 10px; }
+  .barra nav { display: flex; gap: 24px; align-items: center; font-weight: 600; font-size: 15px; }
+  .barra nav a { color: var(--tinta); text-decoration: none; }
+  .barra nav a:hover { color: var(--hoja); }
+  @media (max-width: 760px) { .barra nav a:not(.boton) { display: none; } }
+
+  /* Botones */
+  .boton { display: inline-flex; align-items: center; gap: 10px; background: var(--hoja); color: #fff; text-decoration: none; font-weight: 700; padding: 14px 22px; border-radius: 14px; transition: background .15s; }
+  .boton:hover { background: var(--hoja-oscura); color: #fff; }
+  .boton svg { width: 20px; height: 20px; flex: none; }
+  .boton.grande { font-size: 18px; padding: 18px 28px; border-radius: 16px; }
+  .boton.pequeno { padding: 10px 16px; font-size: 15px; border-radius: 12px; }
+
+  /* Portada */
+  .portada { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding-block: 40px 96px; }
+  .portada h1 { font-size: clamp(48px, 7vw, 92px); font-weight: 800; letter-spacing: -0.035em; max-width: 11ch; }
+  .portada .intro { font-size: 19px; color: #3E5046; }
+  .descarga { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center; }
+  .descarga small { color: var(--gris); font-size: 14px; line-height: 1.4; }
+  .aviso-beta { display: inline-block; margin-top: 28px; font-size: 14px; color: var(--gris); border-left: 3px solid var(--etiqueta); padding: 2px 0 2px 12px; max-width: 46ch; }
+
+  .escena { position: relative; display: flex; align-items: flex-start; gap: 28px; }
+  .ticket {
+    position: relative; flex: 0 1 340px; min-width: 0; background: #fff; padding: 28px 24px 34px;
+    font-family: var(--tique); font-size: 15px; line-height: 1.5; color: #222;
+    box-shadow: 0 1px 0 rgba(16,37,26,.06), 0 24px 48px -24px rgba(16,37,26,.35);
+    transform: rotate(-2.5deg);
+    --dientes: radial-gradient(circle at 8px 0, transparent 7px, #fff 7.5px);
+  }
+  .ticket::after { content: ''; position: absolute; left: 0; right: 0; bottom: -14px; height: 14px; background: var(--dientes); background-size: 16px 14px; }
+  .ticket .cab { text-align: center; border-bottom: 1px dashed #999; padding-bottom: 12px; margin-bottom: 12px; }
+  .ticket .cab strong { display: block; font-size: 17px; letter-spacing: .08em; }
+  .ticket .linea { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .ticket .nota { grid-column: 1 / -1; font-weight: 700; color: var(--sello); font-size: 13px; margin: 2px 0 8px; }
+  .ticket .nota::before { content: '↳ '; }
+  .ticket .total { border-top: 1px dashed #999; margin-top: 12px; padding-top: 12px; }
+  .ticket .ahorro { margin-top: 10px; background: var(--etiqueta); color: var(--tinta); padding: 8px 10px; font-weight: 700; display: grid; grid-template-columns: 1fr auto; }
+  .ticket .pie { margin-top: 14px; text-align: center; font-size: 12px; color: #777; }
+  .movil { flex: 0 0 210px; margin-top: 90px; border-radius: 32px; padding: 8px; background: var(--tinta); box-shadow: 0 30px 60px -28px rgba(16,37,26,.6); transform: rotate(3deg); }
+  .movil img { border-radius: 26px; width: 100%; height: auto; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ticket { animation: imprimir 1.1s cubic-bezier(.2,.7,.2,1) .15s both; }
+    @keyframes imprimir { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 -20px 0); } }
+    .movil { animation: llegar .7s ease-out .9s both; }
+    @keyframes llegar { from { opacity: 0; transform: translateY(24px) rotate(3deg); } to { opacity: 1; transform: rotate(3deg); } }
+  }
+  @media (max-width: 1040px) { .movil { flex-basis: 180px; } .ticket { font-size: 14px; } }
+  @media (max-width: 920px) {
+    .portada { grid-template-columns: 1fr; gap: 48px; padding-block-end: 72px; }
+    .escena { justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    .movil { display: none; }
+    .ticket { flex-basis: 100%; max-width: 360px; }
+  }
+
+  /* Secciones */
+  section { padding-block: 96px; }
+  @media (max-width: 600px) { section { padding-block: 72px; } .portada { padding-block-start: 16px; } }
+  .seccion-oscura { background: var(--tinta); color: #E9F1EC; }
+  .seccion-oscura .intro { color: #A9BDB1; }
+  .seccion-menta { background: var(--menta); }
+
+  /* Problema */
+  .fugas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 56px; }
+  .fuga h3 { color: #fff; margin-bottom: 10px; }
+  .fuga p { color: #B8CABF; }
+  .fuga .marca-sello { display: inline-block; font-family: var(--tique); font-weight: 700; color: #FF8C7A; font-size: 14px; margin-bottom: 14px; border: 1.5px solid currentColor; border-radius: 4px; padding: 1px 8px; transform: rotate(-2deg); }
+  @media (max-width: 820px) { .fugas { grid-template-columns: 1fr; gap: 32px; } }
+
+  /* Pasos */
+  .pasos { list-style: none; padding: 0; margin: 64px 0 0; display: grid; gap: 72px; }
+  .paso { display: grid; grid-template-columns: 1fr 270px; gap: 56px; align-items: center; }
+  .paso:nth-child(even) { grid-template-columns: 270px 1fr; }
+  .paso:nth-child(even) .paso-texto { order: 2; }
+  .paso-num { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--hoja); display: block; margin-bottom: 12px; }
+  .paso h3 { font-size: clamp(26px, 3vw, 34px); max-width: 20ch; }
+  .paso p { margin-top: 14px; color: var(--gris); max-width: 52ch; }
+  .paso ul { margin: 14px 0 0; padding-left: 20px; color: var(--gris); max-width: 52ch; }
+  .paso ul li { margin: 4px 0; }
+  .pantalla { background: var(--tinta); padding: 8px; border-radius: 30px; box-shadow: 0 24px 50px -30px rgba(16,37,26,.55); }
+  .pantalla img { border-radius: 23px; }
+  @media (max-width: 820px) {
+    .paso, .paso:nth-child(even) { grid-template-columns: 1fr; gap: 28px; }
+    .paso:nth-child(even) .paso-texto { order: 0; }
+    .pantalla { max-width: 280px; }
+  }
+
+  /* Lo que incluye */
+  .incluye { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 64px; margin-top: 48px; }
+  .incluye div { padding: 22px 0; border-top: 1px solid #BFD8C9; }
+  .incluye dt { font-weight: 700; font-size: 18px; }
+  .incluye dd { margin: 6px 0 0; color: #3E5046; max-width: 48ch; }
+  @media (max-width: 760px) { .incluye { grid-template-columns: 1fr; } }
+
+  /* Catálogo */
+  .tabla { width: 100%; border-collapse: collapse; margin-top: 40px; font-size: 17px; }
+  .tabla th, .tabla td { text-align: left; padding: 16px 12px 16px 0; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  .tabla th { font-weight: 600; color: var(--gris); font-size: 15px; }
+  .tabla td:first-child { font-weight: 700; }
+  .tabla .num { font-variant-numeric: tabular-nums; }
+  .nota-pequena { margin-top: 18px; color: var(--gris); font-size: 15px; max-width: 70ch; }
+
+  /* Instalar */
+  .instalar { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: start; }
+  .instalar ol { margin: 32px 0 0; padding-left: 24px; }
+  .instalar li { margin: 0 0 18px; padding-left: 6px; max-width: 54ch; }
+  .instalar li::marker { font-family: var(--display); font-weight: 800; color: var(--hoja); }
+  .ficha { background: #fff; border: 1px solid var(--linea); border-radius: 20px; padding: 28px; }
+  .ficha h3 { margin-bottom: 18px; }
+  .ficha dl { margin: 0 0 24px; display: grid; grid-template-columns: auto 1fr; gap: 10px 20px; font-size: 16px; }
+  .ficha dt { color: var(--gris); }
+  .ficha dd { margin: 0; font-weight: 600; }
+  @media (max-width: 860px) { .instalar { grid-template-columns: 1fr; gap: 40px; } }
+
+  /* Privacidad */
+  .privacidad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 48px; }
+  .privacidad h3 { font-size: 20px; margin-bottom: 8px; }
+  .privacidad p { color: var(--gris); }
+  @media (max-width: 820px) { .privacidad { grid-template-columns: 1fr; gap: 28px; } }
+
+  /* Preguntas */
+  .preguntas { margin-top: 40px; max-width: 760px; }
+  details { border-top: 1px solid var(--linea); }
+  details:last-child { border-bottom: 1px solid var(--linea); }
+  summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; font-weight: 700; font-size: 18px; position: relative; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: '+'; position: absolute; right: 4px; top: 14px; font-family: var(--display); font-size: 28px; font-weight: 500; color: var(--hoja); transition: transform .2s; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { padding: 0 0 22px; color: var(--gris); max-width: 64ch; }
+
+  /* Cierre */
+  .cierre { text-align: left; }
+  .cierre h2 { color: #fff; max-width: 16ch; }
+  .cierre .descarga small { color: #A9BDB1; }
+  .boton.claro { background: var(--etiqueta); color: var(--tinta); }
+  .boton.claro:hover { background: #F2C62E; color: var(--tinta); }
+
+  footer { padding-block: 40px 56px; font-size: 15px; color: var(--gris); }
+  footer .fila { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: baseline; }
+  footer .firma { color: var(--tinta); font-weight: 600; }
+  footer .legal { margin-top: 16px; font-size: 13px; max-width: 90ch; }
+</style>
+</head>
+<body>
+
+<header class="envoltura barra">
+  <a class="marca" href="#"><img src="img/icono.png" alt="" width="36" height="36">HomeStock</a>
+  <nav aria-label="Secciones">
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="#precios">Comparador</a>
+    <a href="#preguntas">Preguntas</a>
+    <a class="boton pequeno" href="#descargar">Descargar</a>
+  </nav>
+</header>
+
+<main>
+  <div class="envoltura portada">
+    <div>
+      <h1>Deja de comprar lo que ya tienes.</h1>
+      <p class="intro">HomeStock lleva el inventario de tu casa, te avisa antes de que algo caduque, hace la lista de la compra sola y te dice en qué supermercado te sale más barata, también con marcas blancas.</p>
+      <div class="descarga">
+        <a class="boton grande" href="HomeStock-1.6.0.apk" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Descargar para Android
+        </a>
+        <small>Gratis, sin anuncios<br>Versión 1.6.0 · 97 MB</small>
+      </div>
+      <p class="aviso-beta">La app está en desarrollo: ya se puede usar, pero cambia a menudo. Las actualizaciones se instalan encima sin perder tus datos.</p>
+    </div>
+
+    <div class="escena" aria-label="Ejemplo: el ticket de una compra normal y lo que HomeStock habría evitado">
+      <div class="ticket" role="img" aria-label="Ticket de ejemplo con tres gastos evitables marcados">
+        <div class="cab"><strong>SUPERMERCADO</strong>Ticket de ejemplo</div>
+        <div class="linea"><span>LECHE ENTERA 1L x2</span><span>1,92</span><span class="nota">ya tenías 2 en la nevera</span></div>
+        <div class="linea"><span>YOGUR NATURAL x8</span><span>1,60</span><span class="nota">4 caducaron sin abrir</span></div>
+        <div class="linea"><span>COLA ZERO 2L MARCA</span><span>2,19</span><span class="nota">marca blanca: 0,80</span></div>
+        <div class="linea"><span>PAN DE MOLDE</span><span>1,35</span></div>
+        <div class="linea"><span>TOMATE 1KG</span><span>1,89</span></div>
+        <div class="linea"><span>HUEVOS L x12</span><span>2,45</span></div>
+        <div class="linea total"><span>TOTAL</span><span>11,40</span></div>
+        <div class="ahorro"><span>Evitable con HomeStock</span><span>4,11</span></div>
+        <div class="pie">Unos 16 € al mes en una compra semanal</div>
+      </div>
+      <div class="movil"><img src="img/inicio.webp" alt="Pantalla de inicio de HomeStock con lo que caduca pronto y la lista de la compra" width="390" height="844"></div>
+    </div>
+  </div>
+
+  <section class="seccion-oscura" aria-labelledby="problema">
+    <div class="envoltura">
+      <h2 id="problema">La compra se escapa por tres sitios.</h2>
+      <p class="intro">Nadie se acuerda de todo lo que hay en la nevera, la despensa y el congelador. Y los precios cambian de un súper a otro más de lo que parece.</p>
+      <div class="fugas">
+        <div class="fuga">
+          <span class="marca-sello">ya tenías</span>
+          <h3>Compras repetido</h3>
+          <p>Vuelves con otra botella de aceite porque no sabías que quedaba una entera. HomeStock te enseña lo que hay en casa antes de añadirlo a la lista.</p>
+        </div>
+        <div class="fuga">
+          <span class="marca-sello">caducado</span>
+          <h3>Tiras comida</h3>
+          <p>El yogur del fondo caduca sin que lo veas. La app te avisa días antes y te dice qué usar primero, lote a lote.</p>
+        </div>
+        <div class="fuga">
+          <span class="marca-sello">más caro</span>
+          <h3>Pagas de más</h3>
+          <p>La misma Coca-Cola cuesta distinto en cada súper, y la cola zero de marca blanca cuesta menos de la mitad. Lo ves por precio por litro o por kilo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como-funciona" aria-labelledby="titulo-funciona">
+    <div class="envoltura">
+      <h2 id="titulo-funciona">Cómo funciona</h2>
+      <p class="intro">Cuatro pasos. El primero lo haces una vez; el resto lo hace la app contigo cada semana.</p>
+      <ol class="pasos">
+        <li class="paso">
+          <div class="paso-texto">
+            <span class="paso-num">1</span>
+            <h3>Añade lo que tienes en casa</h3>
+            <p>Sin teclear nombres uno a uno:</p>
+            <ul>
+              <li>escanea el código de barras;</li>
+              <li>haz una foto a la nevera y la IA reconoce todos los productos de golpe;</li>
+              <li>escanea el ticket al volver del súper;</li>
+              <li>o búscalo entre casi 13.000 productos de Mercadona, Consum y DIA, con foto.</li>
+            </ul>
+          </div>
+          <div class="pantalla"><img src="img/super.webp" alt="Catálogo de productos de Mercadona con foto, precio y precio por litro" width="390" height="844" loading="lazy"></div>
+        </li>
+        <li class="paso">
+          <div class="paso-texto">
+            <span class="paso-num">2</span>
+            <h3>La app vigila las fechas por ti</h3>
+            <p>Cada producto queda guardado en su zona (nevera, congelador, despensa…) con su fecha. Si compras dos que caducan en días distintos, se guardan por separado. Te avisa antes de que caduque y, al consumir, gasta primero lo que caduca antes.</p>
+          </div>
+          <div class="pantalla"><img src="img/inventario.webp" alt="Inventario con avisos de «Caduca en 3 días» y «Quedan pocos»" width="390" height="844" loading="lazy"></div>
+        </li>
+        <li class="paso">
+          <div class="paso-texto">
+            <span class="paso-num">3</span>
+            <h3>La lista de la compra se hace sola</h3>
+            <p>Cuando algo se acaba o baja de la cantidad que sueles tener, la app te propone reponerlo. La lista se comparte en tiempo real con tu familia, se ordena por secciones del súper y, al terminar la compra, todo pasa al inventario sin volver a escribirlo.</p>
+          </div>
+          <div class="pantalla"><img src="img/lista.webp" alt="Lista de la compra ordenada por secciones con precio estimado" width="390" height="844" loading="lazy"></div>
+        </li>
+        <li class="paso" id="precios">
+          <div class="paso-texto">
+            <span class="paso-num">4</span>
+            <h3>Compra donde te sale mejor</h3>
+            <p>Para cada producto ves su precio en cada supermercado y, además, las alternativas que sirven para lo mismo: la marca blanca u otra marca, ordenadas por precio por litro o kilo. Solo compara lo comparable: una cola zero con otra cola zero, nunca con la normal ni con la de lima.</p>
+          </div>
+          <div class="pantalla"><img src="img/comparador.webp" alt="Comparador con alternativas de marca blanca y el ahorro por litro" width="390" height="844" loading="lazy"></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="seccion-menta" aria-labelledby="titulo-incluye">
+    <div class="envoltura">
+      <h2 id="titulo-incluye">Todo lo que incluye</h2>
+      <dl class="incluye">
+        <div><dt>Inventario por zonas</dt><dd>Nevera, congelador, despensa, baño… Puedes crear y renombrar las tuyas.</dd></div>
+        <div><dt>Foto de la nevera con IA</dt><dd>Reconoce varios productos en una sola foto. Tú confirmas cada uno antes de guardarlo.</dd></div>
+        <div><dt>Escáner de códigos y tickets</dt><dd>Lee el código de barras o el ticket completo y rellena nombre, marca y precio.</dd></div>
+        <div><dt>Avisos de caducidad</dt><dd>Eliges con cuántos días de antelación y a qué hora te avisa.</dd></div>
+        <div><dt>Listas compartidas</dt><dd>Toda la familia ve y edita la misma lista al momento, también en el modo compra.</dd></div>
+        <div><dt>Varias casas</dt><dd>La tuya, la de tus padres o el apartamento, cada una con su inventario. Cambias con un toque.</dd></div>
+        <div><dt>Comparador con marcas blancas</dt><dd>El mismo producto en cada súper y sus alternativas equivalentes, con el ahorro por litro o kilo.</dd></div>
+        <div><dt>Gasto y ahorro</dt><dd>Cuánto gastas al mes, en qué y cuánto has ahorrado comparando.</dd></div>
+        <div><dt>Funciona sin conexión</dt><dd>El inventario, las listas y el catálogo van en el móvil. Internet solo hace falta para sincronizar y para la IA.</dd></div>
+        <div><dt>Sin cuenta, si quieres</dt><dd>Úsala sin registrarte. Crea una cuenta gratis solo para compartir la casa o usar la IA.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section aria-labelledby="titulo-catalogo">
+    <div class="envoltura">
+      <h2 id="titulo-catalogo">Precios reales, con fecha</h2>
+      <p class="intro">El catálogo viene dentro de la app, con foto de cada producto. Cada precio indica de qué día es: la app nunca inventa precios ni los presenta como de hoy si no lo son.</p>
+      <table class="tabla">
+        <thead><tr><th scope="col">Supermercado</th><th scope="col">Productos</th><th scope="col">Con foto</th><th scope="col">Precios del</th></tr></thead>
+        <tbody>
+          <tr><td>Mercadona</td><td class="num">4.154</td><td class="num">Todos</td><td>4 nov 2026</td></tr>
+          <tr><td>Consum</td><td class="num">8.720</td><td class="num">8.538</td><td>4 nov 2026</td></tr>
+          <tr><td>DIA</td><td class="num">94</td><td class="num">35</td><td>4 nov 2026 (muestra parcial)</td></tr>
+        </tbody>
+      </table>
+      <p class="nota-pequena">Además, los precios que tú pagas (tickets y compras registradas) se guardan solos y tienen prioridad por ser los más recientes de tu zona. Opcionalmente se pueden consultar precios de la comunidad Open Prices.</p>
+    </div>
+  </section>
+
+  <section id="descargar" class="seccion-menta" aria-labelledby="titulo-instalar">
+    <div class="envoltura instalar">
+      <div>
+        <h2 id="titulo-instalar">Instálala en dos minutos</h2>
+        <p class="intro">Todavía no está en Google Play, así que se instala desde este archivo, como cualquier app.</p>
+        <ol>
+          <li>Abre esta página en tu móvil Android y pulsa <strong>Descargar para Android</strong>.</li>
+          <li>Abre el archivo descargado. Si Android avisa de que es una app de origen desconocido, permite instalar desde tu navegador solo para esta vez.</li>
+          <li>Pulsa <strong>Instalar</strong> y abre HomeStock. Puedes empezar sin cuenta.</li>
+          <li>Cuando haya una versión nueva, descárgala de aquí e instálala encima: tus datos se conservan.</li>
+        </ol>
+      </div>
+      <div class="ficha">
+        <h3>HomeStock para Android</h3>
+        <dl>
+          <dt>Versión</dt><dd>1.6.0 (beta)</dd>
+          <dt>Tamaño</dt><dd>97 MB</dd>
+          <dt>Requisitos</dt><dd>Android 7.0 o superior, 64 bits</dd>
+          <dt>Precio</dt><dd>Gratis, sin anuncios</dd>
+          <dt>iPhone</dt><dd>Todavía no</dd>
+        </dl>
+        <a class="boton grande" href="HomeStock-1.6.0.apk" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Descargar para Android
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="titulo-privacidad">
+    <div class="envoltura">
+      <h2 id="titulo-privacidad">Tus datos son tuyos</h2>
+      <div class="privacidad">
+        <div><h3>Sin cuenta, todo en tu móvil</h3><p>Si no te registras, el inventario y las listas se guardan solo en tu teléfono.</p></div>
+        <div><h3>Con cuenta, solo tu casa</h3><p>Al compartir una casa, sus datos solo los ven los miembros que invites con un código. Puedes exportarlos o borrarlo todo desde la app.</p></div>
+        <div><h3>Fotos sin guardar</h3><p>Las fotos que analiza la IA (Google Gemini) no se guardan en HomeStock. Sin anuncios y sin vender datos.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="preguntas" aria-labelledby="titulo-preguntas" style="padding-top: 0">
+    <div class="envoltura">
+      <h2 id="titulo-preguntas">Preguntas frecuentes</h2>
+      <div class="preguntas">
+        <details><summary>¿Es gratis de verdad?</summary><p>Sí. No tiene anuncios ni suscripción, y la cuenta también es gratuita.</p></details>
+        <details><summary>¿Por qué no está en Google Play?</summary><p>Porque está en desarrollo y cambia cada semana. Cuando esté estable, llegará a la tienda. Mientras tanto se instala desde esta página.</p></details>
+        <details><summary>¿Los precios son de hoy?</summary><p>Cada precio muestra la fecha en que se tomó. Los del catálogo son de la web pública de cada cadena en esa fecha; los tuyos, de tus tickets. Si un precio es antiguo, la app lo dice.</p></details>
+        <details><summary>¿Qué supermercados compara?</summary><p>Mercadona y Consum con su catálogo completo y una muestra de DIA. Puedes registrar precios de cualquier tienda, como Lidl, Carrefour o el mercado de tu barrio.</p></details>
+        <details><summary>¿Funciona sin internet?</summary><p>Sí. El inventario, las listas, el catálogo y los avisos funcionan sin conexión. La foto con IA, la sincronización con tu familia y los precios de la comunidad necesitan internet.</p></details>
+        <details><summary>¿Y en iPhone?</summary><p>Todavía no. Por ahora solo hay versión para Android.</p></details>
+        <details><summary>¿Necesito crear una cuenta?</summary><p>No. Solo hace falta para compartir la casa con tu familia, sincronizar varios móviles o usar el reconocimiento de fotos con IA. Es gratis y basta un email.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion-oscura cierre" aria-labelledby="titulo-cierre">
+    <div class="envoltura">
+      <h2 id="titulo-cierre">Empieza esta semana con la nevera ordenada.</h2>
+      <div class="descarga">
+        <a class="boton grande claro" href="HomeStock-1.6.0.apk" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Descargar para Android
+        </a>
+        <small>Versión 1.6.0 · 97 MB · Android 7.0 o superior</small>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="envoltura">
+  <div class="fila">
+    <span class="firma">Desarrollado por <a href="https://pablobenlloch.es">Pablo Benlloch</a></span>
+    <a href="https://pablobenlloch.es/proyectos">Más proyectos</a>
+  </div>
+  <p class="legal">HomeStock es un proyecto personal y no está afiliado a Mercadona, Consum, DIA ni a ninguna otra cadena. Los nombres y marcas pertenecen a sus propietarios. Datos de producto de Open Food Facts (ODbL) y fotos de Open Food Facts (CC BY-SA) y de las webs públicas de cada cadena. El ticket de la portada es un ejemplo.</p>
+</footer>
+
+</body>
+</html>

@@ -51,3 +51,6 @@ example
 
 # Fuentes de las fotos empaquetadas (van dentro de assets/catalog/pack)
 scripts/catalog/data/img_*/
+
+# La APK de la landing se sube aparte
+landing/*.apk
