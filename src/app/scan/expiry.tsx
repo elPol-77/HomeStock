@@ -11,6 +11,7 @@ import { ExpiryOcrResult, parseExpiryFromText } from '@/domain/expiryOcr';
 import { useDrafts } from '@/services/drafts';
 import { haptic } from '@/services/haptics';
 import { isOcrAvailable, ocrImage, OCR_UNAVAILABLE_MESSAGE } from '@/services/ocr';
+import { readExpiryInPhoto, VisionError, visionReady } from '@/services/vision';
 
 export default function ExpiryScan() {
   const { target } = useLocalSearchParams<{ target?: string }>();
@@ -19,23 +20,52 @@ export default function ExpiryScan() {
   const [result, setResult] = useState<ExpiryOcrResult | null>(null);
   const [date, setDate] = useState<string | null>(null);
   const [kind, setKind] = useState<ExpiryKind | null>(null);
-  const [error, setError] = useState<string | null>(isOcrAvailable ? null : OCR_UNAVAILABLE_MESSAGE);
+  const canRead = isOcrAvailable || visionReady();
+  const [error, setError] = useState<string | null>(canRead ? null : 'Inicia sesión para leer la fecha con IA, o escríbela a mano.');
   const [rawText, setRawText] = useState<string>('');
 
+  const show = (r: ExpiryOcrResult, raw: string) => {
+    setRawText(raw);
+    setResult(r);
+    setDate(r.best?.date ?? null);
+    setKind(r.best?.kind ?? null);
+    if (r.best) haptic.success();
+    else haptic.warning();
+  };
+
   const onCapture = async (uri: string) => {
-    if (!isOcrAvailable) return;
     setBusy(true);
+    setError(null);
+    let aiProblem: string | null = null;
     try {
+      // 1) IA (con sesión): lee fechas en cualquier formato aunque el texto sea pequeño o curvo.
+      if (visionReady()) {
+        try {
+          const r = await readExpiryInPhoto(uri);
+          if (r.date) {
+            const c = { date: r.date, kind: r.kind, confidence: r.confidence === 'alta' ? 0.95 : r.confidence === 'media' ? 0.7 : 0.4, raw: r.text ?? '', monthOnly: false };
+            show({ best: c, candidates: [c], needsConfirmation: r.confidence !== 'alta' }, r.text ?? '');
+            return;
+          }
+          aiProblem = 'La IA no ha encontrado una fecha legible en la foto.';
+        } catch (e) {
+          aiProblem = e instanceof VisionError ? e.message : 'La IA no ha podido leer la foto.';
+        }
+      }
+      // 2) Respaldo: lector de texto del móvil.
+      if (!isOcrAvailable) {
+        show({ best: null, candidates: [], needsConfirmation: true }, '');
+        setError(aiProblem ?? OCR_UNAVAILABLE_MESSAGE);
+        return;
+      }
       const ocr = await ocrImage(uri);
       const r = parseExpiryFromText(ocr.lines);
-      setRawText(ocr.lines.join(' · '));
-      setResult(r);
-      setDate(r.best?.date ?? null);
-      setKind(r.best?.kind ?? null);
-      if (r.best) haptic.success();
-      else haptic.warning();
-    } catch {
-      setError('No se pudo leer la imagen. Prueba de nuevo con más luz o escribe la fecha.');
+      show(r, ocr.lines.join(' · '));
+      if (!r.best && aiProblem) setError(aiProblem);
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      show({ best: null, candidates: [], needsConfirmation: true }, '');
+      setError(`${aiProblem ? aiProblem + ' ' : ''}No se pudo leer la imagen (${detail}). Repite la foto con más luz o escribe la fecha abajo.`);
     } finally {
       setBusy(false);
     }
@@ -96,7 +126,7 @@ export default function ExpiryScan() {
           Texto leído: {rawText}
         </Text>
       ) : null}
-      {isOcrAvailable ? <Button title="Repetir foto" variant="ghost" icon="camera-outline" onPress={() => { setResult(null); setError(null); }} /> : null}
+      {canRead ? <Button title="Repetir foto" variant="ghost" icon="camera-outline" onPress={() => { setResult(null); setError(null); }} /> : null}
     </Screen>
   );
 }

@@ -4,17 +4,17 @@
 // Seguridad:
 // - La clave GEMINI_API_KEY es un «secret» de Supabase: vive solo en el servidor, nunca en la app ni en GitHub.
 // - Solo responde a usuarios con sesión iniciada (se valida el token con Supabase Auth).
-// - Límite diario por persona (VISION_DAILY_LIMIT, 20 por defecto) para no agotar el plan gratuito.
+// - Límite diario por persona (VISION_DAILY_LIMIT, 40 por defecto) para no agotar el plan gratuito.
 // - El prompt lo fija el servidor: la app solo manda la foto y la lista de categorías.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { VISION_MODELS, visionRequestBody } from '../_shared/visionPrompt.ts';
+import { expiryRequestBody, productRequestBody, VISION_MODELS, visionRequestBody } from '../_shared/visionPrompt.ts';
 
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false },
 });
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
-const DAILY_LIMIT = Number(Deno.env.get('VISION_DAILY_LIMIT') ?? '20');
+const DAILY_LIMIT = Number(Deno.env.get('VISION_DAILY_LIMIT') ?? '40');
 const GLOBAL_LIMIT = Number(Deno.env.get('VISION_GLOBAL_LIMIT') ?? '400'); // tope diario de todo el proyecto
 const MAX_IMAGE_CHARS = 3_000_000; // ~2,2 MB de JPEG; la app manda ~300-600 KB
 
@@ -92,9 +92,11 @@ Deno.serve(async (req) => {
   // 2) Datos de entrada.
   let image = '';
   let categories: string[] = [];
+  let mode: 'fridge' | 'product' | 'expiry' = 'fridge';
   try {
-    const body = (await req.json()) as { image?: unknown; categories?: unknown };
+    const body = (await req.json()) as { image?: unknown; categories?: unknown; mode?: unknown };
     image = typeof body.image === 'string' ? body.image : '';
+    if (body.mode === 'product' || body.mode === 'expiry') mode = body.mode;
     categories = Array.isArray(body.categories)
       ? body.categories.filter((c): c is string => typeof c === 'string' && /^[\p{L} ,.'/-]{2,30}$/u.test(c)).slice(0, 30)
       : [];
@@ -119,7 +121,8 @@ Deno.serve(async (req) => {
 
   try {
     // 4) Gemini (con cambio automático de modelo si Google retira el actual).
-    const payload = visionRequestBody(image, categories);
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    const payload = mode === 'product' ? productRequestBody(image, categories) : mode === 'expiry' ? expiryRequestBody(image, today) : visionRequestBody(image, categories);
     if (!model) model = (await pickModel()) ?? VISION_MODELS[0];
     let res = await callGemini(model, payload);
     if (res.status === 404) {

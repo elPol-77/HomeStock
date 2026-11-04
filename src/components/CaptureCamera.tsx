@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { pickImage } from '@/services/ocr';
 import { haptic } from '@/services/haptics';
+import { toast } from '@/services/toast';
 import { radius } from '@/theme/tokens';
 
 import { Button, EmptyState, IconButton, ScalePressable, Screen, Text } from './ui';
@@ -35,12 +36,21 @@ export function CaptureCamera({
   const shoot = async () => {
     if (!ref.current || busy) return;
     haptic.medium();
-    const photo = await ref.current.takePictureAsync({ quality: 0.85, skipProcessing: false });
-    if (photo?.uri) onCapture(photo.uri);
+    try {
+      const photo = await ref.current.takePictureAsync({ quality: 0.85, skipProcessing: false });
+      if (photo?.uri) onCapture(photo.uri);
+      else toast('La cámara no ha devuelto la foto. Prueba otra vez.', 'danger');
+    } catch (e) {
+      toast(`No se pudo hacer la foto${e instanceof Error ? ` (${e.message})` : ''}. Prueba otra vez o elige una de la galería.`, 'danger');
+    }
   };
   const gallery = async () => {
-    const uri = await pickImage();
-    if (uri) onCapture(uri);
+    try {
+      const uri = await pickImage();
+      if (uri) onCapture(uri);
+    } catch (e) {
+      toast(`No se pudo abrir la galería${e instanceof Error ? ` (${e.message})` : ''}.`, 'danger');
+    }
   };
 
   if (!permission) return <View style={{ flex: 1, backgroundColor: '#000' }} />;

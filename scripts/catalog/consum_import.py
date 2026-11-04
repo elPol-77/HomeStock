@@ -47,9 +47,10 @@ if 'categories' in src:
 date = sys.argv[3] if len(sys.argv) > 3 else '2026-11-04'
 out = {}
 skipped = 0
+key_of_row = {}
 for cat, rows in src.items():
     section, fixed = TOP.get(cat, ('Otros', None))
-    for brand, name, unit, old, price in rows.values():
+    for row_key, (brand, name, unit, old, price) in rows.items():
         brand, name = brand.strip(), name.strip()
         # Productos sin marca (fruta, carne al peso): la primera línea es el nombre.
         if '€' in name:
@@ -87,6 +88,7 @@ for cat, rows in src.items():
                     break
             c = c or fixed or 'Otros'
         key = norm(full) + '|' + norm(fmt or '')
+        key_of_row[row_key] = 'cs-' + hashlib.sha1(key.encode()).hexdigest()[:10]
         if key in out:
             continue
         u = 'ud'
@@ -100,3 +102,6 @@ json.dump({'store': 'consum', 'capturedAt': date, 'source': 'Web pública de Con
           open(sys.argv[2], 'w'), ensure_ascii=False, separators=(',', ':'))
 from collections import Counter
 print(len(items), 'productos;', skipped, 'descartados por nombre ilegible', Counter(i['c'] for i in items))
+
+# Mapa «MARCA|Nombre» (como en la web) → id del catálogo, para enlazar las fotos (consum_images.py).
+json.dump(key_of_row, open(sys.argv[2].replace('.json', '.rowids.json'), 'w'), ensure_ascii=False)

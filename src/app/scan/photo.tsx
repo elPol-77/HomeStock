@@ -14,6 +14,7 @@ import { draftFromCatalog, useDrafts } from '@/services/drafts';
 import { haptic } from '@/services/haptics';
 import { isOcrAvailable, OCR_UNAVAILABLE_MESSAGE } from '@/services/ocr';
 import { recognizeProductPhoto, RecognitionResult } from '@/services/recognize';
+import { visionReady } from '@/services/vision';
 import { useTheme } from '@/theme/ThemeProvider';
 
 const CERTAINTY = {
@@ -28,7 +29,7 @@ export default function PhotoRecognition() {
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [result, setResult] = useState<RecognitionResult | null>(null);
-  const [error, setError] = useState<string | null>(isOcrAvailable ? null : OCR_UNAVAILABLE_MESSAGE);
+  const [error, setError] = useState<string | null>(isOcrAvailable || visionReady() ? null : 'Inicia sesión para reconocer productos con IA, o escanea el código de barras.');
 
   const onCapture = async (uri: string) => {
     setPhoto(uri);
@@ -39,14 +40,15 @@ export default function PhotoRecognition() {
       if (r.candidates[0]?.certainty === 'high') haptic.success();
       else haptic.warning();
     } catch (e) {
-      setError(e instanceof Error && e.message === 'OCR_UNAVAILABLE' ? OCR_UNAVAILABLE_MESSAGE : 'No se pudo analizar la foto. Inténtalo de nuevo.');
+      const detail = e instanceof Error ? e.message : String(e);
+      setError(detail === 'OCR_UNAVAILABLE' ? OCR_UNAVAILABLE_MESSAGE : `No se pudo analizar la foto (${detail}). Inténtalo de nuevo o escanea el código de barras.`);
     } finally {
       setBusy(false);
     }
   };
 
   if (!photo && !error) {
-    return <CaptureCamera title="Reconocer producto" hint="Fotografía la parte delantera, con el nombre y la marca bien visibles" frame="square" busy={busy} onCapture={onCapture} />;
+    return <CaptureCamera title="Reconocer producto" hint="Fotografía la parte delantera, con el nombre y la marca bien visibles" frame="square" busy={busy} onCapture={onCapture} privacyText={visionReady() ? 'La foto se analiza con IA (Google Gemini) para reconocer el producto.' : undefined} />;
   }
 
   const createFromText = () => {

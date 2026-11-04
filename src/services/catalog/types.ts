@@ -2,7 +2,7 @@ import type { PriceSource } from '@/domain/basket';
 import type { ISODate } from '@/domain/dates';
 import type { PackageSize } from '@/domain/units';
 
-export type CatalogSource = 'off' | 'obf' | 'opf' | 'opff' | 'local' | 'store' | 'demo';
+export type CatalogSource = 'off' | 'obf' | 'opf' | 'opff' | 'local' | 'store' | 'demo' | 'ai';
 
 export const CATALOG_SOURCE_LABEL: Record<CatalogSource, string> = {
   off: 'Open Food Facts',
@@ -12,6 +12,7 @@ export const CATALOG_SOURCE_LABEL: Record<CatalogSource, string> = {
   local: 'Tu hogar',
   store: 'Catálogo del súper',
   demo: 'Demostración',
+  ai: 'Reconocido con IA en tu foto',
 };
 
 export interface CatalogProduct {

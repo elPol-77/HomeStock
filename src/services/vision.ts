@@ -61,8 +61,8 @@ export class VisionError extends Error {
 const CATEGORY_NAMES = CATEGORIES.map((c) => c.name);
 
 /** Reduce la foto (lado mayor 1600 px, JPEG 0,7) y la devuelve en base64. */
-async function prepareImage(uri: string): Promise<string> {
-  const r = await manipulateAsync(uri, [{ resize: { width: 1600 } }], { compress: 0.7, format: SaveFormat.JPEG, base64: true });
+async function prepareImage(uri: string, width = 1600): Promise<string> {
+  const r = await manipulateAsync(uri, [{ resize: { width } }], { compress: 0.7, format: SaveFormat.JPEG, base64: true });
   if (r.base64) return r.base64;
   return new File(r.uri).base64();
 }
@@ -130,7 +130,7 @@ export async function visionStatus(): Promise<VisionStatus> {
   }
 }
 
-async function callServer(image: string, signal?: AbortSignal): Promise<DetectedItem[]> {
+async function callServer(image: string, mode: 'fridge' | 'product' | 'expiry', signal?: AbortSignal): Promise<string> {
   const token = isCloudConfigured && useAuth.getState().session ? await accessToken().catch(() => null) : null;
   if (!token) throw new VisionError('login', 'Inicia sesión (es gratis) para reconocer productos automáticamente.');
   let res: Response;
@@ -142,11 +142,11 @@ async function callServer(image: string, signal?: AbortSignal): Promise<Detected
         apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ image, categories: CATEGORY_NAMES }),
+      body: JSON.stringify({ image, categories: CATEGORY_NAMES, mode }),
       signal,
     });
   } catch {
-    throw new VisionError('network', 'Sin conexión. La foto de la nevera necesita internet.');
+    throw new VisionError('network', 'Sin conexión: el reconocimiento con IA necesita internet.');
   }
   const json = (await res.json().catch(() => ({}))) as { text?: string; code?: VisionError['code']; message?: string };
   if (!res.ok || !json.text) {
@@ -154,10 +154,64 @@ async function callServer(image: string, signal?: AbortSignal): Promise<Detected
     if (res.status === 401 && !json.code) throw new VisionError('login', 'Tu sesión ha caducado. Vuelve a iniciar sesión.');
     throw new VisionError(code, json.message ?? `El servidor respondió con un error (${res.status}).`);
   }
-  return parseVisionResponse(json.text);
+  return json.text;
 }
 
 export async function detectProductsInPhoto(uri: string, opts: { signal?: AbortSignal } = {}): Promise<DetectedItem[]> {
   if (!visionReady()) throw new VisionError('login', 'Inicia sesión (es gratis) para reconocer productos automáticamente.');
-  return callServer(await prepareImage(uri), opts.signal);
+  return parseVisionResponse(await callServer(await prepareImage(uri), 'fridge', opts.signal));
+}
+
+function parseJson(text: string): Record<string, unknown> {
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw new VisionError('parse', 'La IA no devolvió un resultado válido.');
+    return JSON.parse(m[0]) as Record<string, unknown>;
+  }
+}
+const str = (v: unknown) => (typeof v === 'string' && v.trim() && v.trim().toLowerCase() !== 'null' ? v.trim() : null);
+const conf = (v: unknown): Confidence => (v === 'alta' || v === 'media' ? v : 'baja');
+
+export interface PhotoProduct {
+  name: string;
+  brand: string | null;
+  size: string | null;
+  barcode: string | null;
+  category: string;
+  confidence: Confidence;
+  evidence: string | null;
+}
+
+/** Identifica UN producto en la foto (para añadirlo al inventario). */
+export async function identifyProductInPhoto(uri: string, signal?: AbortSignal): Promise<PhotoProduct | null> {
+  const raw = parseJson(await callServer(await prepareImage(uri, 1200), 'product', signal));
+  const name = str(raw.name);
+  if (!name) return null;
+  const barcode = str(raw.barcode)?.replace(/\D/g, '') ?? null;
+  return {
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    brand: str(raw.brand),
+    size: str(raw.size),
+    barcode: barcode && (barcode.length === 8 || barcode.length === 13) ? barcode : null,
+    category: CATEGORY_NAMES.includes(String(raw.category)) ? String(raw.category) : 'Otros',
+    confidence: conf(raw.confidence),
+    evidence: str(raw.evidence),
+  };
+}
+
+export interface PhotoExpiry {
+  date: string | null;
+  kind: 'use_by' | 'best_before';
+  text: string | null;
+  confidence: Confidence;
+}
+
+/** Lee la fecha de caducidad / consumo preferente impresa en el envase. */
+export async function readExpiryInPhoto(uri: string, signal?: AbortSignal): Promise<PhotoExpiry> {
+  const raw = parseJson(await callServer(await prepareImage(uri, 1600), 'expiry', signal));
+  const d = str(raw.date);
+  const valid = d && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) ? d : null;
+  return { date: valid, kind: raw.kind === 'use_by' ? 'use_by' : 'best_before', text: str(raw.text), confidence: valid ? conf(raw.confidence) : 'baja' };
 }
