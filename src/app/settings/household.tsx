@@ -30,18 +30,23 @@ export default function HouseholdSettings() {
   }, [h]);
 
   const loadRemote = useCallback(async () => {
-    if (!h?.remote || !session) return;
+    const cur = await getHousehold();
+    if (!cur?.remote || !session) {
+      setMembers([]);
+      setCode(null);
+      return;
+    }
     try {
       setMembers(await listMembers());
       setCode(await getInviteCode());
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Error', 'danger');
     }
-  }, [h?.remote, session]);
+  }, [session]);
 
   useEffect(() => {
     loadRemote();
-  }, [loadRemote]);
+  }, [loadRemote, h?.id, h?.remote]);
 
   const run = async (fn: () => Promise<unknown>, ok?: string) => {
     setBusy(true);

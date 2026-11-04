@@ -139,7 +139,7 @@ export default function ListDetail() {
           {l.emoji ?? '📝'} {l.name}
         </Text>
         <Text variant="caption" color="textMuted">
-          {pending.length} pendientes{estimate > 0 ? ` · estimado ${formatEuro(estimate)}` : ''}
+          {pending.length} {pending.length === 1 ? 'pendiente' : 'pendientes'}{estimate > 0 ? ` · estimado ${formatEuro(estimate)}` : ''}
           {archived ? ' · archivada' : ''}
         </Text>
       </View>

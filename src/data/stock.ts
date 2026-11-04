@@ -162,10 +162,10 @@ export async function expiringBatches(
   untilDate: ISODate,
   opts: { allHouseholds?: boolean } = {},
 ): Promise<
-  { id: string; product_id: string; product_name: string; image_url: string | null; quantity: number; expiry_date: ISODate; expiry_kind: ExpiryKind | null; location_name: string | null; household_name: string | null }[]
+  { id: string; product_id: string; product_name: string; image_url: string | null; quantity: number; expiry_date: ISODate; expiry_kind: ExpiryKind | null; location_name: string | null; household_id: string; household_name: string | null }[]
 > {
   return all(
-    `SELECT b.id, b.product_id, p.name AS product_name, p.image_url, b.quantity, b.expiry_date, b.expiry_kind, l.name AS location_name, h.name AS household_name
+    `SELECT b.id, b.product_id, p.name AS product_name, p.image_url, b.quantity, b.expiry_date, b.expiry_kind, l.name AS location_name, b.household_id, h.name AS household_name
      FROM batches b JOIN products p ON p.id = b.product_id LEFT JOIN locations l ON l.id = b.location_id LEFT JOIN households h ON h.id = b.household_id
      WHERE b.deleted = 0 AND p.deleted = 0 AND b.quantity > 0 AND b.expiry_date IS NOT NULL AND b.expiry_date <= ?
        ${opts.allHouseholds ? '' : 'AND b.household_id = ?'}

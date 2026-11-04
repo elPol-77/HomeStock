@@ -33,11 +33,13 @@ export default function Inventory() {
   }, [params.filter]);
 
   const locations = useLiveQuery(listLocations, ['locations']);
+  // Si cambias de casa, la zona elegida puede no existir en la nueva: se vuelve a «Todas».
+  const activeLocation = location && (locations.data ?? []).some((l) => l.id === location) ? location : null;
   const counts = useLiveQuery(locationCounts, ['batches', 'stock_movements']);
   const products = useLiveQuery(
-    () => listProductsWithStock({ filter, locationId: location, search, warnDays }),
+    () => listProductsWithStock({ filter, locationId: activeLocation, search, warnDays }),
     ['products', 'batches', 'stock_movements', 'locations'],
-    [filter, location, search, warnDays],
+    [filter, activeLocation, search, warnDays],
   );
   const total = useMemo(() => products.data?.length ?? 0, [products.data]);
 
@@ -55,15 +57,15 @@ export default function Inventory() {
         <TextField icon="search" placeholder="Buscar en casa" value={search} onChangeText={setSearch} returnKeyType="search" clearButtonMode="while-editing" accessibilityLabel="Buscar productos" />
         <Segmented options={FILTERS} value={filter} onChange={setFilter} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }} style={{ marginHorizontal: -20, paddingLeft: 20, flexGrow: 0 }}>
-          <Chip label="Todas" selected={location === null} onPress={() => setLocation(null)} icon="home-outline" />
+          <Chip label="Todas" selected={activeLocation === null} onPress={() => setLocation(null)} icon="home-outline" />
           {(locations.data ?? []).map((l) => (
             <Chip
               key={l.id}
               label={l.name}
               icon={l.icon as never}
               count={counts.data?.[l.id] ?? 0}
-              selected={location === l.id}
-              onPress={() => setLocation(location === l.id ? null : l.id)}
+              selected={activeLocation === l.id}
+              onPress={() => setLocation(activeLocation === l.id ? null : l.id)}
               onLongPress={() => router.push({ pathname: '/settings/locations', params: { edit: l.id } })}
             />
           ))}

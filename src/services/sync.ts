@@ -2,10 +2,10 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
 
-import { all, getSetting, householdId, run, setSetting } from '@/db/client';
+import { all, getSetting, run, setSetting } from '@/db/client';
 import { emitChange, subscribe } from '@/db/events';
 import { SYNC_TABLES, SyncTable } from '@/db/schema';
-import { activateHousehold, addRemoteHouseholdLocal, getHousehold, listHouseholds } from '@/data/household';
+import { activateHousehold, addRemoteHouseholdLocal, getHousehold, listHouseholds, markHouseholdLocal } from '@/data/household';
 import { recomputeAllBatches } from '@/data/stock';
 
 import { useAuth } from './auth';
@@ -41,16 +41,17 @@ function columnsFor(row: Record<string, unknown>, table: SyncTable) {
   return out;
 }
 
-async function canSync(): Promise<boolean> {
-  if (!supabase || !useAuth.getState().session) return false;
-  const h = await getHousehold();
-  return !!h?.remote;
+/** Casas compartidas de este móvil que hay que sincronizar (todas, no solo la activa). */
+async function syncableHouseholds(): Promise<string[]> {
+  if (!supabase || !useAuth.getState().session) return [];
+  const rows = await all<{ id: string }>('SELECT id FROM households WHERE remote = 1');
+  return rows.map((r) => r.id);
 }
 
-async function push(): Promise<number> {
+async function push(hid: string): Promise<number> {
   let pushed = 0;
   for (const table of SYNC_TABLES) {
-    const rows = await all<Record<string, unknown>>(`SELECT * FROM ${table} WHERE dirty = 1 AND household_id = ? LIMIT 500`, [householdId()]);
+    const rows = await all<Record<string, unknown>>(`SELECT * FROM ${table} WHERE dirty = 1 AND household_id = ? LIMIT 500`, [hid]);
     if (rows.length === 0) continue;
     const payload = rows.map((r) => {
       const c = columnsFor(r, table);
@@ -70,12 +71,12 @@ async function push(): Promise<number> {
   return pushed;
 }
 
-async function pull(): Promise<{ total: number; newListItems: number }> {
+async function pull(hid: string): Promise<{ total: number; newListItems: number }> {
   let total = 0;
   let newListItems = 0;
   const myId = useAuth.getState().session?.user.id;
   for (const table of SYNC_TABLES) {
-    const cursorKey = `sync:cursor:${householdId()}:${table}`;
+    const cursorKey = `sync:cursor:${hid}:${table}`;
     let cursor = await getSetting<string>(cursorKey, '1970-01-01T00:00:00Z');
     // Primer lote con 30 s de solape: cubre transacciones que confirmaron tarde (los duplicados se ignoran).
     let since = new Date(Math.max(0, Date.parse(cursor) - 30000)).toISOString();
@@ -83,7 +84,7 @@ async function pull(): Promise<{ total: number; newListItems: number }> {
       const { data, error } = await supabase!
         .from(table)
         .select('*')
-        .eq('household_id', householdId())
+        .eq('household_id', hid)
         .gt('server_updated_at', since)
         .order('server_updated_at', { ascending: true })
         .limit(500);
@@ -112,10 +113,6 @@ async function pull(): Promise<{ total: number; newListItems: number }> {
       if (data.length < 500) break;
     }
   }
-  if (total > 0) {
-    await recomputeAllBatches();
-    emitChange([...SYNC_TABLES]);
-  }
   return { total, newListItems };
 }
 
@@ -124,22 +121,37 @@ export async function syncNow(): Promise<void> {
     again = true;
     return;
   }
-  if (!(await canSync())) {
+  const houses = await syncableHouseholds();
+  if (houses.length === 0) {
     useSync.setState({ status: 'disabled' });
     return;
   }
   running = true;
   useSync.setState({ status: 'syncing', error: null });
+  let newListItems = 0;
+  let pulled = 0;
+  const errors: string[] = [];
   try {
-    await push();
-    const { newListItems } = await pull();
-    useSync.setState({ status: 'idle', lastSync: new Date().toISOString() });
+    // Cada casa con su id fijo: cambiar de casa a mitad de un sync no mezcla cursores ni datos.
+    for (const hid of houses) {
+      try {
+        await push(hid);
+        const r = await pull(hid);
+        newListItems += r.newListItems;
+        pulled += r.total;
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
+      }
+    }
+    if (pulled > 0) {
+      await recomputeAllBatches();
+      emitChange([...SYNC_TABLES]);
+    }
+    if (errors.length === 0) useSync.setState({ status: 'idle', lastSync: new Date().toISOString() });
+    else useSync.setState({ status: errors.some((m) => /network|fetch/i.test(m)) ? 'offline' : 'error', error: errors[0] });
     if (newListItems > 0 && !pushActive) {
       notifyNow('Lista de la compra actualizada', `Tu familia ha añadido ${newListItems} ${newListItems === 1 ? 'producto' : 'productos'} a la lista.`, '/shop', 'household').catch(() => {});
     }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    useSync.setState({ status: /network|fetch/i.test(msg) ? 'offline' : 'error', error: msg });
   } finally {
     running = false;
     if (again) {
@@ -149,10 +161,16 @@ export async function syncNow(): Promise<void> {
   }
 }
 
+let realtimeGen = 0;
+
+/** Escucha en tiempo real los cambios de la casa activa (si es compartida). */
 async function subscribeRealtime() {
   if (!supabase || channel) return;
-  if (!(await canSync())) return;
-  const hid = householdId();
+  const gen = realtimeGen;
+  const h = await getHousehold().catch(() => null);
+  if (!h?.remote || !useAuth.getState().session) return;
+  if (gen !== realtimeGen || channel) return; // otra llamada ganó mientras esperábamos
+  const hid = h.id;
   channel = supabase.channel(`household:${hid}`);
   for (const table of SYNC_TABLES) {
     channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `household_id=eq.${hid}` }, () => schedulePush(800));
@@ -161,6 +179,7 @@ async function subscribeRealtime() {
 }
 
 export function resetRealtime() {
+  realtimeGen++;
   if (channel && supabase) supabase.removeChannel(channel);
   channel = null;
   subscribeRealtime().catch(() => {});
@@ -181,12 +200,16 @@ export async function discoverRemoteHouseholds(): Promise<number> {
   const { data, error } = await supabase.from('household_members').select('role, households(id, name)').eq('user_id', userId);
   if (error || !data) return 0;
   const local = await listHouseholds();
+  const rows = data as unknown as { role: 'admin' | 'member'; households: { id: string; name: string } | null }[];
   let added = 0;
-  for (const row of data as unknown as { role: 'admin' | 'member'; households: { id: string; name: string } | null }[]) {
+  for (const row of rows) {
     if (!row.households) continue;
-    if (!local.some((h) => h.id === row.households!.id)) added++;
+    if (!local.some((h) => h.id === row.households!.id && h.remote)) added++;
     await addRemoteHouseholdLocal(row.households.id, row.households.name, row.role);
   }
+  // Casas compartidas de las que ya no formas parte (te sacaron): se quedan como copia solo en este móvil.
+  const memberOf = new Set(rows.map((r) => r.households?.id).filter(Boolean));
+  for (const h of local) if (h.remote && !memberOf.has(h.id)) await markHouseholdLocal(h.id);
   const current = local.find((h) => h.current);
   if (added > 0 && current && !current.remote && current.products === 0 && local.length === 1) {
     const firstRemote = (data as unknown as { households: { id: string } | null }[]).find((r) => r.households)?.households;
@@ -211,7 +234,10 @@ export function startSync() {
   });
   useAuth.subscribe((state, prev) => {
     if (state.session?.user.id !== prev.session?.user.id) {
-      discoverRemoteHouseholds()
+      // Al cerrar sesión (o cambiar de cuenta) las casas compartidas dejan de sincronizarse en este móvil.
+      const before = prev.session && !state.session ? run('UPDATE households SET remote = 0 WHERE remote = 1').then(() => emitChange(['households'])) : Promise.resolve();
+      before
+        .then(() => discoverRemoteHouseholds())
         .catch(() => 0)
         .finally(() => {
           resetRealtime();

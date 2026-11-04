@@ -79,10 +79,14 @@ export function HouseSwitcher() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: h.current }}
                   onPress={async () => {
-                    if (!h.current) {
-                      haptic.success();
-                      await switchHousehold(h.id);
-                      toast(`Ahora estás en «${h.name}»`);
+                    try {
+                      if (!h.current) {
+                        await switchHousehold(h.id);
+                        haptic.success();
+                        toast(`Ahora estás en «${h.name}»`);
+                      }
+                    } catch (e) {
+                      toast(e instanceof Error ? e.message : 'No se pudo cambiar de casa', 'danger');
                     }
                     close();
                   }}
@@ -128,6 +132,8 @@ export function HouseSwitcher() {
                     haptic.success();
                     toast(`Casa «${name.trim()}» creada`);
                     close();
+                  } catch (e) {
+                    toast(e instanceof Error ? e.message : 'No se pudo crear la casa', 'danger');
                   } finally {
                     setBusy(false);
                   }

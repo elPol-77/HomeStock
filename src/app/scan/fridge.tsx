@@ -1,13 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { CaptureCamera } from '@/components/CaptureCamera';
 import { CategoryBadge, ProductThumb } from '@/components/ProductThumb';
-import { Badge, Button, Card, Chip, ErrorState, Row, Screen, SectionTitle, SkeletonList, Stepper, Text, TextField } from '@/components/ui';
+import { Badge, Button, Card, Chip, ErrorState, Row, Screen, SectionTitle, SkeletonList, Stepper, Text } from '@/components/ui';
 import { Checkbox } from '@/components/ListItemRow';
 import { productFromBundled } from '@/data/catalogProducts';
 import { createProduct, listLocations, matchExistingProduct } from '@/data/products';
@@ -21,7 +20,7 @@ import { BundledItem, matchBundled } from '@/services/catalog/bundled';
 import { storeName } from '@/services/catalog/stores';
 import { haptic } from '@/services/haptics';
 import { toast } from '@/services/toast';
-import { Confidence, DetectedItem, detectProductsInPhoto, GEMINI_KEY_URL, setVisionKey, testVisionKey, VisionError, VisionMode, visionMode } from '@/services/vision';
+import { Confidence, DetectedItem, detectProductsInPhoto, VisionError } from '@/services/vision';
 import { useAuth } from '@/services/auth';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -40,64 +39,7 @@ interface Row {
   catalog: BundledItem | null;
 }
 
-function KeySetup({ onSaved, note }: { onSaved: () => void; note?: string }) {
-  const { colors } = useTheme();
-  const [key, setKey] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  return (
-    <Screen title="Foto de la nevera" subtitle="Reconoce varios productos de una sola foto" back bottomInset="safe">
-      {note ? (
-        <Card tone="warning">
-          <Text variant="caption">{note}</Text>
-        </Card>
-      ) : null}
-      <Card tone="primary" style={{ gap: 10 }}>
-        <Row gap={10}>
-          <Ionicons name="sparkles" size={22} color={colors.primary} />
-          <Text variant="bodyStrong" style={{ flex: 1 }}>
-            Usa la IA gratuita de Google (Gemini) con tu propia clave
-          </Text>
-        </Row>
-        <Text variant="body">1. Entra en Google AI Studio con tu cuenta de Google.</Text>
-        <Text variant="body">2. Pulsa «Create API key» y cópiala.</Text>
-        <Text variant="body">3. Pégala aquí. Se guarda cifrada solo en este móvil.</Text>
-        <Button title="Abrir Google AI Studio" variant="secondary" icon="open-outline" onPress={() => WebBrowser.openBrowserAsync(GEMINI_KEY_URL)} />
-      </Card>
-      <TextField label="Clave de Gemini" placeholder="AIza…" value={key} onChangeText={setKey} autoCapitalize="none" autoCorrect={false} secureTextEntry />
-      {msg ? (
-        <Text variant="caption" color={msg.startsWith('Clave correcta') ? 'success' : 'danger'}>
-          {msg}
-        </Text>
-      ) : null}
-      <Button
-        title="Comprobar y guardar"
-        icon="checkmark"
-        loading={busy}
-        disabled={key.trim().length < 20}
-        onPress={async () => {
-          setBusy(true);
-          const r = await testVisionKey(key);
-          setMsg(r.message);
-          setBusy(false);
-          if (r.ok) {
-            await setVisionKey(key);
-            haptic.success();
-            onSaved();
-          } else haptic.error();
-        }}
-      />
-      <Card tone="alt" style={{ gap: 6 }}>
-        <Text variant="bodyStrong">Antes de empezar</Text>
-        <Text variant="caption" color="textMuted">
-          • Es gratis dentro del límite diario de Google; si lo superas, simplemente espera.{'\n'}• La foto se envía a Google para analizarla y, en el plan gratuito, Google puede usarla para mejorar sus productos. Haz fotos solo de comida y productos, sin personas ni documentos.{'\n'}• La IA propone; tú confirmas cada producto antes de guardarlo.
-        </Text>
-      </Card>
-    </Screen>
-  );
-}
-
-function LoginGate({ onOwnKey }: { onOwnKey: () => void }) {
+function LoginGate() {
   const { colors } = useTheme();
   return (
     <Screen title="Foto de la nevera" subtitle="Reconoce varios productos de una sola foto" back bottomInset="safe">
@@ -111,15 +53,12 @@ function LoginGate({ onOwnKey }: { onOwnKey: () => void }) {
         </Text>
         <Button title="Iniciar sesión o crear cuenta" icon="log-in-outline" onPress={() => router.push('/auth/login')} style={{ alignSelf: 'stretch' }} />
       </Card>
-      <Button title="Usar mi propia clave de Gemini (avanzado)" variant="ghost" size="sm" onPress={onOwnKey} />
     </Screen>
   );
 }
 
 export default function FridgePhoto() {
   const { colors, reduceMotion } = useTheme();
-  const [mode, setMode] = useState<VisionMode | 'setup' | null>(null);
-  const [setupNote, setSetupNote] = useState<string | undefined>(undefined);
   const session = useAuth((a) => a.session);
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -137,10 +76,6 @@ export default function FridgePhoto() {
     });
     return () => abort.current?.abort();
   }, []);
-
-  useEffect(() => {
-    visionMode().then(setMode);
-  }, [session]);
 
   const analyze = async (uri: string) => {
     setPhoto(uri);
@@ -163,10 +98,7 @@ export default function FridgePhoto() {
     } catch (e) {
       haptic.error();
       setError(e instanceof VisionError ? e : new VisionError('unknown', 'No se pudo analizar la foto.'));
-      if (e instanceof VisionError && e.code === 'bad_key') {
-        await setVisionKey(null);
-      }
-      if (e instanceof VisionError && e.code === 'login') setMode('login');
+
     } finally {
       setBusy(false);
     }
@@ -213,14 +145,7 @@ export default function FridgePhoto() {
     }
   };
 
-  if (mode === null)
-    return (
-      <Screen back>
-        <SkeletonList rows={3} />
-      </Screen>
-    );
-  if (mode === 'setup') return <KeySetup note={setupNote} onSaved={() => setMode('own')} />;
-  if (mode === 'login') return <LoginGate onOwnKey={() => setMode('setup')} />;
+  if (!session) return <LoginGate />;
 
   if (!photo) {
     return (
@@ -262,11 +187,7 @@ export default function FridgePhoto() {
         <ErrorState
           message={error.message}
           onRetry={() => {
-            if (error.code === 'bad_key' || error.code === 'no_key') setMode('setup');
-            else if (error.code === 'not_configured') {
-              setSetupNote(error.message + ' Mientras tanto puedes usar tu propia clave gratuita.');
-              setMode('setup');
-            } else if (error.code === 'login') setMode('login');
+            if (error.code === 'login') router.push('/auth/login');
             else if (photo) analyze(photo);
           }}
         />

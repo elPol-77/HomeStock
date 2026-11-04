@@ -5,6 +5,7 @@ import { Alert, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { DateField, ExpiryKindPicker } from '@/components/Pickers';
+import { ExpiryGroup, ExpiryGroupsEditor, mergeExpiryGroups, totalUnits } from '@/components/ExpiryGroups';
 import { ProductThumb } from '@/components/ProductThumb';
 import { AnimatedNumber, Badge, Button, Card, Chip, Divider, EmptyState, IconButton, Row, Screen, SectionTitle, SkeletonList, Stepper, Text } from '@/components/ui';
 import { useLiveQuery } from '@/db/events';
@@ -128,8 +129,7 @@ export default function ProductDetail() {
   const movements = useLiveQuery(() => getMovements(id), ['stock_movements'], [id]);
   const locations = useLiveQuery(listLocations, ['locations']);
   const [adding, setAdding] = useState(false);
-  const [newQty, setNewQty] = useState(1);
-  const [newExpiry, setNewExpiry] = useState<string | null>(null);
+  const [newGroups, setNewGroups] = useState<ExpiryGroup[]>([{ qty: 1, date: null }]);
 
   const p = product.data;
   if (product.loading && !p) {
@@ -233,20 +233,17 @@ export default function ProductDetail() {
       <SectionTitle title={`Lotes (${batches.data?.length ?? 0})`} action={adding ? 'Cancelar' : 'Añadir lote'} onAction={() => setAdding((a) => !a)} />
       {adding ? (
         <Card tone="primary" style={{ gap: 14 }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Text variant="bodyStrong">Unidades</Text>
-            <Stepper value={newQty} onChange={setNewQty} min={1} size="sm" label="unidades del nuevo lote" />
-          </Row>
-          <DateField label="Fecha de caducidad" value={newExpiry} onChange={setNewExpiry} />
+          <ExpiryGroupsEditor groups={newGroups} onChange={setNewGroups} minTotal={1} dateLabel="Fecha de caducidad" />
           <Button
-            title="Añadir lote"
+            title={newGroups.length > 1 ? `Añadir ${newGroups.length} lotes` : 'Añadir lote'}
             icon="add"
+            disabled={totalUnits(newGroups) < 1}
             onPress={async () => {
-              await addStock({ productId: p.id, quantity: newQty, expiryDate: newExpiry, expiryKind: newExpiry ? 'use_by' : null, reason: 'adjust' });
+              const lots = mergeExpiryGroups(newGroups);
+              for (const g of lots) await addStock({ productId: p.id, quantity: g.qty, expiryDate: g.date, expiryKind: g.date ? 'use_by' : null, reason: 'adjust' });
               setAdding(false);
-              setNewQty(1);
-              setNewExpiry(null);
-              toast('Lote añadido');
+              setNewGroups([{ qty: 1, date: null }]);
+              toast(lots.length > 1 ? `${lots.length} lotes añadidos` : 'Lote añadido');
             }}
           />
         </Card>

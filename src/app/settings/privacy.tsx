@@ -8,6 +8,7 @@ import { Button, Card, Screen, SectionTitle, Text } from '@/components/ui';
 import { all } from '@/db/client';
 import { SYNC_TABLES } from '@/db/schema';
 import { ensureHousehold, wipeLocalData } from '@/data/household';
+import { discoverRemoteHouseholds, resetRealtime, syncNow } from '@/services/sync';
 import { deleteAccount, useAuth } from '@/services/auth';
 import { useSettings } from '@/services/settings';
 import { toast } from '@/services/toast';
@@ -65,6 +66,9 @@ export default function Privacy() {
               onPress: async () => {
                 await wipeLocalData();
                 await ensureHousehold();
+                await discoverRemoteHouseholds().catch(() => 0);
+                resetRealtime();
+                syncNow();
                 await update({ onboarded: false });
                 router.replace('/onboarding');
               },

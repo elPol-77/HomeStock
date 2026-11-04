@@ -94,7 +94,8 @@ export async function switchHousehold(id: string) {
 
 /** Quita una casa de este móvil. Si es compartida, además te sales de ella en la nube. */
 export async function leaveOrRemoveHousehold(id: string, remote: boolean) {
-  if (remote && supabase && useAuth.getState().session) {
+  if (remote && !useAuth.getState().session) throw new Error('Inicia sesión para salir de esta casa compartida.');
+  if (remote && supabase) {
     const { error } = await supabase.rpc('remove_member', { p_household: id, p_user: useAuth.getState().session!.user.id });
     if (error) throw new Error(error.message.includes('at least one admin') ? 'Antes de salir, nombra a otro administrador.' : error.message);
   }

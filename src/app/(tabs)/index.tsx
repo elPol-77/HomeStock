@@ -155,7 +155,7 @@ export default function Home() {
                   <View style={{ flex: 1 }}>
                     <Text variant="bodyStrong">{data.activeList.name}</Text>
                     <Text variant="caption" color="textMuted">
-                      {data.activeList.total === 0 ? 'Lista vacía' : `${data.activeList.total - data.activeList.checked} pendientes · ${data.activeList.checked} en el carro`}
+                      {data.activeList.total === 0 ? 'Lista vacía' : `${data.activeList.total - data.activeList.checked} ${data.activeList.total - data.activeList.checked === 1 ? 'pendiente' : 'pendientes'} · ${data.activeList.checked} en el carro`}
                     </Text>
                   </View>
                   {data.activeList.total > 0 ? <Button title="Ir a comprar" size="sm" icon="cart" onPress={() => router.push(`/list/${data.activeList!.id}/shop`)} /> : null}
@@ -173,7 +173,7 @@ export default function Home() {
                 </Text>
                 <AnimatedNumber value={data.spentThisMonth} format={formatEuro} variant="heading" />
               </Card>
-              <Card style={{ flex: 1, gap: 4 }} tone="accent" onPress={() => router.push('/stats')}>
+              <Card style={{ flex: 1, gap: 4 }} tone="accent" onPress={() => (potential != null && data.activeList ? router.push({ pathname: '/prices/basket', params: { listId: data.activeList.id } }) : router.push('/stats'))}>
                 <Text variant="caption" color="textMuted">
                   {potential != null ? 'Ahorro potencial (estimado)' : 'Ahorro verificado este mes'}
                 </Text>

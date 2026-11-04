@@ -61,13 +61,13 @@ export default function Shop() {
           const pending = l.total_items - l.checked_items;
           return (
             <Animated.View key={l.id} entering={reduceMotion ? undefined : FadeInDown.delay(i * 50).springify().damping(20)}>
-              <Card onPress={() => router.push(`/list/${l.id}`)} style={{ gap: 12 }} accessibilityLabel={`${l.name}, ${pending} pendientes`}>
+              <Card onPress={() => router.push(`/list/${l.id}`)} style={{ gap: 12 }} accessibilityLabel={`${l.name}, ${pending} ${pending === 1 ? 'pendiente' : 'pendientes'}`}>
                 <Row>
                   <Text variant="title">{l.emoji ?? '📝'}</Text>
                   <View style={{ flex: 1 }}>
                     <Text variant="heading">{l.name}</Text>
                     <Text variant="caption" color="textMuted">
-                      {l.total_items === 0 ? 'Vacía' : `${pending} pendientes de ${l.total_items}`}
+                      {l.total_items === 0 ? 'Vacía' : `${pending} de ${l.total_items} ${pending === 1 ? 'pendiente' : 'pendientes'}`}
                       {l.estimated_total ? ` · ~${formatEuro(l.estimated_total)}` : ''}
                       {l.store ? ` · ${storeName(l.store)}` : ''}
                     </Text>

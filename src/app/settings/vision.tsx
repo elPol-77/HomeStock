@@ -1,93 +1,83 @@
-import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useState } from 'react';
-
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 
-import { Badge, Button, Card, Screen, SectionTitle, Text, TextField } from '@/components/ui';
+import { Button, Card, ProgressBar, Row, Screen, SectionTitle, Text } from '@/components/ui';
 import { useAuth } from '@/services/auth';
-import { haptic } from '@/services/haptics';
-import { toast } from '@/services/toast';
-import { DEFAULT_VISION_MODEL, GEMINI_KEY_URL, getVisionKey, getVisionModel, setVisionKey, setVisionModel, testVisionKey } from '@/services/vision';
+import { VisionStatus, visionStatus } from '@/services/vision';
+import { useTheme } from '@/theme/ThemeProvider';
+
+function Step({ icon, title, text }: { icon: 'camera-outline' | 'sparkles-outline' | 'checkmark-done-outline'; title: string; text: string }) {
+  const { colors } = useTheme();
+  return (
+    <Row gap={12} style={{ alignItems: 'flex-start' }}>
+      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={18} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="bodyStrong">{title}</Text>
+        <Text variant="caption" color="textMuted">
+          {text}
+        </Text>
+      </View>
+    </Row>
+  );
+}
 
 export default function VisionSettings() {
-  const [hasKey, setHasKey] = useState(false);
-  const [key, setKey] = useState('');
-  const [model, setModel] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { colors } = useTheme();
   const session = useAuth((a) => a.session);
+  const [status, setStatus] = useState<VisionStatus | null>(null);
 
   useEffect(() => {
-    getVisionKey().then((k) => setHasKey(!!k));
-    getVisionModel().then(setModel);
-  }, []);
+    visionStatus().then(setStatus);
+  }, [session]);
+
+  const ready = !!session && status?.ready !== false;
+  const used = status?.dailyLimit != null && status.remaining != null ? status.dailyLimit - status.remaining : null;
 
   return (
-    <Screen title="IA para fotos" subtitle="Reconocer varios productos de una foto (nevera, despensa, compra)" back bottomInset="safe">
-      <Card tone="primary" style={{ gap: 8 }}>
-        <Text variant="bodyStrong">Automático (recomendado)</Text>
-        <Text variant="caption" color="textMuted">
-          No tienes que configurar nada: con la sesión iniciada, HomeStock analiza la foto con la IA gratuita de Google (Gemini) desde su servidor. Hasta 20 fotos al día por persona.
+    <Screen title="IA para fotos" subtitle="Reconoce todos los productos de una foto de la nevera o la despensa" back bottomInset="safe">
+      <Card tone={ready ? 'primary' : 'alt'} style={{ gap: 10 }}>
+        <Row gap={10}>
+          <Ionicons name={ready ? 'checkmark-circle' : 'log-in-outline'} size={24} color={ready ? colors.success : colors.textMuted} />
+          <Text variant="heading" style={{ flex: 1 }}>
+            {!session ? 'Inicia sesión para activarla' : status === null ? 'Comprobando…' : status.ready ? 'Activada' : 'No disponible ahora mismo'}
+          </Text>
+        </Row>
+        <Text variant="body" color="textMuted">
+          {!session
+            ? 'Es gratis y no tienes que configurar nada: solo necesitamos saber que eres tú para repartir las fotos diarias.'
+            : status && !status.ready
+              ? 'El servicio está en mantenimiento. Prueba más tarde.'
+              : 'No tienes que configurar nada. Haz la foto y la app te dice qué hay.'}
         </Text>
-        {hasKey ? (
-          <Badge label="Desactivado: estás usando tu propia clave" tone="neutral" />
-        ) : session ? (
-          <Badge label="Activo" tone="success" icon="checkmark-circle" />
+        {session && status?.dailyLimit != null && status.remaining != null ? (
+          <View style={{ gap: 6 }}>
+            <Text variant="caption" color="textMuted">
+              Te quedan {status.remaining} de {status.dailyLimit} fotos hoy
+            </Text>
+            <ProgressBar value={used! / status.dailyLimit} />
+          </View>
+        ) : null}
+        {!session ? (
+          <Button title="Iniciar sesión o crear cuenta" icon="log-in-outline" onPress={() => router.push('/auth/login')} />
         ) : (
-          <Button title="Iniciar sesión para activarlo" size="sm" icon="log-in-outline" onPress={() => router.push('/auth/login')} style={{ alignSelf: 'flex-start' }} />
+          <Button title="Hacer una foto ahora" icon="camera-outline" disabled={status?.ready === false} onPress={() => router.push('/scan/fridge')} />
         )}
-        <Text variant="caption" color="textFaint">
-          Las fotos se envían a Google para analizarlas; en el plan gratuito Google puede usarlas para mejorar sus productos. Haz fotos solo de comida, sin personas ni documentos.
-        </Text>
       </Card>
 
-      <SectionTitle title="Avanzado: tu propia clave" />
-      <Card style={{ gap: 6 }}>
-        <Text variant="bodyStrong">{hasKey ? 'Clave propia guardada en este móvil' : 'Opcional'}</Text>
-        <Text variant="caption" color="textMuted">
-          Solo si quieres más fotos al día o usar la IA sin cuenta. La clave se guarda cifrada en el móvil y no se comparte con tu hogar.
-        </Text>
-        <Button title="Obtener clave en Google AI Studio" variant="ghost" icon="open-outline" onPress={() => WebBrowser.openBrowserAsync(GEMINI_KEY_URL)} style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} />
+      <SectionTitle title="Cómo funciona" />
+      <Card style={{ gap: 14 }}>
+        <Step icon="camera-outline" title="1. Haz una foto" text="Abre la nevera o la despensa y saca todo en una foto con buena luz." />
+        <Step icon="sparkles-outline" title="2. La IA lo reconoce" text="En unos segundos te propone cada producto con su cantidad y categoría." />
+        <Step icon="checkmark-done-outline" title="3. Tú confirmas" text="Marca lo que quieras guardar y elige la zona. Nada se añade sin tu permiso." />
       </Card>
-      <TextField label={hasKey ? 'Nueva clave (opcional)' : 'Clave de Gemini'} placeholder="AIza…" value={key} onChangeText={setKey} autoCapitalize="none" autoCorrect={false} secureTextEntry />
-      <TextField label="Modelo" value={model} onChangeText={setModel} autoCapitalize="none" autoCorrect={false} hint={`Por defecto ${DEFAULT_VISION_MODEL}. Cámbialo solo si Google retira ese modelo.`} />
-      {msg ? (
-        <Text variant="caption" color={msg.startsWith('Clave correcta') ? 'success' : 'danger'}>
-          {msg}
-        </Text>
-      ) : null}
-      <Button
-        title="Comprobar y guardar"
-        icon="checkmark"
-        loading={busy}
-        disabled={!key.trim() && !hasKey}
-        onPress={async () => {
-          setBusy(true);
-          const k = key.trim() || (await getVisionKey()) || '';
-          const r = await testVisionKey(k, model);
-          setMsg(r.message);
-          setBusy(false);
-          if (r.ok) {
-            if (key.trim()) await setVisionKey(key);
-            await setVisionModel(model === DEFAULT_VISION_MODEL ? null : model);
-            setHasKey(true);
-            setKey('');
-            haptic.success();
-          } else haptic.error();
-        }}
-      />
-      {hasKey ? (
-        <Button
-          title="Borrar mi clave y volver al modo automático"
-          variant="danger"
-          icon="trash-outline"
-          onPress={async () => {
-            await setVisionKey(null);
-            setHasKey(false);
-            toast('Clave borrada');
-          }}
-        />
-      ) : null}
+
+      <Text variant="caption" color="textFaint">
+        Las fotos se analizan con Google Gemini y HomeStock no las guarda; en el plan gratuito Google puede usarlas para mejorar sus servicios. Haz fotos solo de comida y productos, sin personas ni documentos.
+      </Text>
     </Screen>
   );
 }

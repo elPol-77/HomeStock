@@ -47,6 +47,7 @@ export async function ensureHousehold(): Promise<Household> {
   setCurrentHousehold(id);
   await setSetting(CURRENT_KEY, id);
   await seedHousehold(id);
+  emitChange(['households', 'locations', 'shopping_lists']);
   return { id, name: 'Mi casa', remote: 0, role: 'admin' };
 }
 
@@ -95,13 +96,19 @@ export async function removeHouseholdLocal(id: string) {
   if (householdId() === id) {
     const next = await first<{ id: string }>('SELECT id FROM households ORDER BY created_at LIMIT 1');
     await activateHousehold(next!.id);
-  } else emitChange(['households']);
+  } else emitChange(['households', ...HOUSEHOLD_TABLES]);
 }
 
 /** Registra en este móvil una casa compartida que ya existe en la nube (sin activarla). */
 export async function addRemoteHouseholdLocal(id: string, name: string, role: 'admin' | 'member') {
   await run('INSERT OR IGNORE INTO households (id, name, remote, role, created_at) VALUES (?, ?, 1, ?, ?)', [id, name, role, nowIso()]);
   await run('UPDATE households SET name = ?, role = ?, remote = 1 WHERE id = ?', [name, role, id]);
+  emitChange(['households']);
+}
+
+/** La casa deja de estar compartida en este móvil (te sacaron o cerraste sesión); sus datos se conservan. */
+export async function markHouseholdLocal(id: string) {
+  await run("UPDATE households SET remote = 0, role = 'admin' WHERE id = ?", [id]);
   emitChange(['households']);
 }
 

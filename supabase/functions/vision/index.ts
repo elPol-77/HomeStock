@@ -15,6 +15,7 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE
 });
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 const DAILY_LIMIT = Number(Deno.env.get('VISION_DAILY_LIMIT') ?? '20');
+const GLOBAL_LIMIT = Number(Deno.env.get('VISION_GLOBAL_LIMIT') ?? '400'); // tope diario de todo el proyecto
 const MAX_IMAGE_CHARS = 3_000_000; // ~2,2 MB de JPEG; la app manda ~300-600 KB
 
 const CORS = {
@@ -28,6 +29,7 @@ function reply(status: number, body: Record<string, unknown>) {
 }
 
 let model: string | null = Deno.env.get('GEMINI_MODEL') || null;
+let checkedAt = 0; // última vez que se comprobó la clave/modelo con Google (caché de 1 h)
 
 async function pickModel(): Promise<string | null> {
   try {
@@ -58,9 +60,25 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (!GEMINI_KEY) return reply(503, { code: 'not_configured', message: 'El reconocimiento automático aún no está activado en el servidor.' });
   // Estado: comprueba la clave con Google (listar modelos no gasta cupo) sin revelarla.
+  // Con sesión, además dice cuántas fotos te quedan hoy.
   if (req.method === 'GET') {
-    const m = await pickModel();
-    return reply(m ? 200 : 503, m ? { configured: true, model: m, dailyLimit: DAILY_LIMIT } : { code: 'not_configured', message: 'La clave del servidor no es válida.' });
+    if (!model || Date.now() - checkedAt > 3_600_000) {
+      model = (await pickModel()) ?? null;
+      checkedAt = Date.now();
+    }
+    const m = model;
+    if (!m) return reply(503, { code: 'not_configured', message: 'La clave del servidor no es válida.' });
+    let remaining: number | null = null;
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+    if (token) {
+      const { data } = await admin.auth.getUser(token);
+      if (data?.user) {
+        const day = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+        const { data: row } = await admin.from('vision_usage').select('count').eq('user_id', data.user.id).eq('day', day).maybeSingle();
+        remaining = Math.max(0, DAILY_LIMIT - ((row?.count as number | undefined) ?? 0));
+      }
+    }
+    return reply(200, { configured: true, model: m, dailyLimit: DAILY_LIMIT, remaining });
   }
   if (req.method !== 'POST') return reply(405, { code: 'unknown', message: 'Método no permitido.' });
 
@@ -69,6 +87,7 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = jwt ? await admin.auth.getUser(jwt) : { data: { user: null }, error: true };
   const user = userData?.user;
   if (userError || !user || user.is_anonymous) return reply(401, { code: 'login', message: 'Inicia sesión para usar el reconocimiento automático.' });
+  if (user.email && !user.email_confirmed_at) return reply(403, { code: 'login', message: 'Confirma tu email (revisa tu correo) para usar el reconocimiento automático.' });
 
   // 2) Datos de entrada.
   let image = '';
@@ -86,38 +105,53 @@ Deno.serve(async (req) => {
   if (categories.length === 0) categories = ['Otros'];
 
   // 3) Cupo diario por persona (atómico en la base de datos).
-  const { data: left, error: quotaError } = await admin.rpc('vision_consume', { p_user: user.id, p_limit: DAILY_LIMIT });
+  const { data: left, error: quotaError } = await admin.rpc('vision_consume', { p_user: user.id, p_limit: DAILY_LIMIT, p_global: GLOBAL_LIMIT });
   if (quotaError) return reply(500, { code: 'unknown', message: 'No se pudo comprobar tu cupo diario.' });
+  if ((left as number) === -2) return reply(429, { code: 'quota', message: 'Hoy se ha llegado al límite gratuito del servicio. Mañana vuelve a funcionar.' });
   if ((left as number) < 0) return reply(429, { code: 'daily_limit', message: `Has usado las ${DAILY_LIMIT} fotos de hoy. Mañana tendrás más.` });
-
-  // 4) Gemini (con cambio automático de modelo si Google retira el actual).
-  const payload = visionRequestBody(image, categories);
-  if (!model) model = (await pickModel()) ?? VISION_MODELS[0];
-  let res = await callGemini(model, payload);
-  if (res.status === 404) {
-    const alt = await pickModel();
-    if (alt && alt !== model) {
-      model = alt;
-      res = await callGemini(model, payload);
-    }
-  }
-  if (!res.ok) {
+  const refund = async () => {
     try {
       await admin.rpc('vision_refund', { p_user: user.id });
     } catch {
       /* sin importancia */
     }
-    if (res.status === 429) return reply(429, { code: 'quota', message: 'El servicio gratuito está saturado ahora mismo. Prueba en un rato.' });
-    const errBody = await res.text().catch(() => '');
-    if ((res.status === 400 && /API.?key/i.test(errBody)) || res.status === 401 || res.status === 403) return reply(503, { code: 'not_configured', message: 'La clave del servidor no es válida. Avisa a quien administra la app.' });
-    return reply(502, { code: 'unknown', message: `Gemini respondió con un error (${res.status}).` });
-  }
-  const json = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-    promptFeedback?: { blockReason?: string };
   };
-  if (json.promptFeedback?.blockReason) return reply(422, { code: 'blocked', message: 'Gemini no ha querido analizar esta foto.' });
-  const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
-  if (!text) return reply(502, { code: 'parse', message: 'Gemini no devolvió resultados. Prueba con otra foto.' });
-  return reply(200, { text, model, remaining: left });
+
+  try {
+    // 4) Gemini (con cambio automático de modelo si Google retira el actual).
+    const payload = visionRequestBody(image, categories);
+    if (!model) model = (await pickModel()) ?? VISION_MODELS[0];
+    let res = await callGemini(model, payload);
+    if (res.status === 404) {
+      const alt = await pickModel();
+      if (alt && alt !== model) {
+        model = alt;
+        res = await callGemini(model, payload);
+      }
+    }
+    if (!res.ok) {
+      await refund();
+      if (res.status === 429) return reply(429, { code: 'quota', message: 'El servicio gratuito está saturado ahora mismo. Prueba en un rato.' });
+      const errBody = await res.text().catch(() => '');
+      if ((res.status === 400 && /API.?key/i.test(errBody)) || res.status === 401 || res.status === 403) return reply(503, { code: 'not_configured', message: 'La clave del servidor no es válida. Avisa a quien administra la app.' });
+      return reply(502, { code: 'unknown', message: `Gemini respondió con un error (${res.status}).` });
+    }
+    const json = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      promptFeedback?: { blockReason?: string };
+    };
+    if (json.promptFeedback?.blockReason) {
+      await refund();
+      return reply(422, { code: 'blocked', message: 'Gemini no ha querido analizar esta foto.' });
+    }
+    const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+    if (!text) {
+      await refund();
+      return reply(502, { code: 'parse', message: 'Gemini no devolvió resultados. Prueba con otra foto.' });
+    }
+    return reply(200, { text, model, remaining: left });
+  } catch {
+    await refund();
+    return reply(502, { code: 'unknown', message: 'No se pudo contactar con la IA. Prueba en un momento.' });
+  }
 });

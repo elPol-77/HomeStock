@@ -4,7 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { DateField, ExpiryKindPicker, StorePicker } from '@/components/Pickers';
+import { ExpiryGroup, ExpiryGroupsEditor, mergeExpiryGroups } from '@/components/ExpiryGroups';
+import { ExpiryKindPicker, StorePicker } from '@/components/Pickers';
 import { CategoryBadge, ProductThumb } from '@/components/ProductThumb';
 import { Badge, Button, Card, Chip, Row, ScalePressable, Screen, SectionTitle, Stepper, Text, TextField } from '@/components/ui';
 import { transaction } from '@/db/client';
@@ -51,8 +52,9 @@ export default function ProductEdit() {
   const [usualQty, setUsualQty] = useState(0);
   const [notes, setNotes] = useState('');
   // Existencias iniciales (solo al crear)
-  const [qty, setQty] = useState(1);
-  const [expiry, setExpiry] = useState<string | null>(null);
+  const [groups, setGroups] = useState<ExpiryGroup[]>([{ qty: 1, date: null }]);
+  const [scanIndex, setScanIndex] = useState(0);
+  const anyExpiry = groups.some((g) => g.date);
   const [expiryKind, setExpiryKind] = useState<ExpiryKind | null>('use_by');
   const [price, setPrice] = useState('');
   const [store, setStore] = useState<string | null>(null);
@@ -133,10 +135,10 @@ export default function ProductEdit() {
     useCallback(() => {
       const r = takeExpiry('new-product');
       if (r) {
-        setExpiry(r.date);
+        setGroups((gs) => gs.map((g, i) => (i === Math.min(scanIndex, gs.length - 1) ? { ...g, date: r.date } : g)));
         if (r.kind) setExpiryKind(r.kind);
       }
-    }, [takeExpiry]),
+    }, [takeExpiry, scanIndex]),
   );
 
   const save = async () => {
@@ -175,9 +177,10 @@ export default function ProductEdit() {
       } else {
         const newId = await transaction(['products', 'batches', 'stock_movements', 'price_observations'], async () => {
           const pid = await createProduct({ ...input, source: draft?.origin === 'barcode' || draft?.origin === 'search' ? 'off' : draft?.origin === 'photo' ? 'photo' : 'manual' }, { emit: false });
-          if (qty > 0) {
+          // Un lote por cada fecha distinta (p. ej. 2 yogures del día 10 y 1 del 15).
+          for (const g of mergeExpiryGroups(groups)) {
             await addStockRaw({
-              productId: pid, quantity: qty, expiryDate: expiry, expiryKind: expiry ? expiryKind : null, locationId,
+              productId: pid, quantity: g.qty, expiryDate: g.date, expiryKind: g.date ? expiryKind : null, locationId,
               pricePaid: priceNum, store, reason: priceNum != null ? 'purchase' : 'adjust',
             });
           }
@@ -343,21 +346,16 @@ export default function ProductEdit() {
         <>
           <SectionTitle title="¿Cuántos tienes ahora?" />
           <Card style={{ gap: 16 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Text variant="bodyStrong">Unidades</Text>
-              <Stepper value={qty} onChange={setQty} label="unidades" />
-            </Row>
-            <DateField label="Fecha de caducidad o consumo preferente" value={expiry} onChange={setExpiry} />
-            <Button
-              title="Leer la fecha con la cámara"
-              variant="secondary"
-              icon="scan-outline"
-              onPress={() => {
+            <ExpiryGroupsEditor
+              groups={groups}
+              onChange={setGroups}
+              onScan={(i) => {
+                setScanIndex(i);
                 requestExpiry('new-product');
                 router.push('/scan/expiry?target=new-product');
               }}
             />
-            {expiry ? <ExpiryKindPicker value={expiryKind} onChange={setExpiryKind} /> : null}
+            {anyExpiry ? <ExpiryKindPicker value={expiryKind} onChange={setExpiryKind} /> : null}
             <TextField label="Precio pagado por unidad (opcional)" placeholder="0,89" value={price} onChangeText={setPrice} keyboardType="decimal-pad" error={errors.price} icon="pricetag-outline" />
             {price ? <StorePicker value={store} onChange={setStore} label="¿Dónde lo compraste?" /> : null}
           </Card>
