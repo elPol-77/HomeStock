@@ -10,6 +10,7 @@ import { recomputeAllBatches } from '@/data/stock';
 
 import { useAuth } from './auth';
 import { notifyNow } from './notifications';
+import { pushActive } from './push';
 import { supabase } from './supabase';
 
 /**
@@ -76,12 +77,14 @@ async function pull(): Promise<{ total: number; newListItems: number }> {
   for (const table of SYNC_TABLES) {
     const cursorKey = `sync:cursor:${table}`;
     let cursor = await getSetting<string>(cursorKey, '1970-01-01T00:00:00Z');
+    // Primer lote con 30 s de solape: cubre transacciones que confirmaron tarde (los duplicados se ignoran).
+    let since = new Date(Math.max(0, Date.parse(cursor) - 30000)).toISOString();
     for (;;) {
       const { data, error } = await supabase!
         .from(table)
         .select('*')
         .eq('household_id', householdId())
-        .gt('server_updated_at', cursor)
+        .gt('server_updated_at', since)
         .order('server_updated_at', { ascending: true })
         .limit(500);
       if (error) throw new Error(`${table}: ${error.message}`);
@@ -103,6 +106,7 @@ async function pull(): Promise<{ total: number; newListItems: number }> {
         );
       }
       cursor = (data[data.length - 1] as { server_updated_at: string }).server_updated_at;
+      since = cursor;
       await setSetting(cursorKey, cursor);
       total += data.length;
       if (data.length < 500) break;
@@ -130,7 +134,7 @@ export async function syncNow(): Promise<void> {
     await push();
     const { newListItems } = await pull();
     useSync.setState({ status: 'idle', lastSync: new Date().toISOString() });
-    if (newListItems > 0) {
+    if (newListItems > 0 && !pushActive) {
       notifyNow('Lista de la compra actualizada', `Tu familia ha añadido ${newListItems} ${newListItems === 1 ? 'producto' : 'productos'} a la lista.`, '/shop', 'household').catch(() => {});
     }
   } catch (e) {

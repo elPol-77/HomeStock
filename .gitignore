@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+# Native (Continuous Native Generation: se regeneran con `npx expo prebuild`)
+/android
+/ios

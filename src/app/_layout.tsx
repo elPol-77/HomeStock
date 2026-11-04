@@ -19,6 +19,7 @@ import { ensureHousehold } from '@/data/household';
 import { initAuth } from '@/services/auth';
 import { initNotifications } from '@/services/notifications';
 import { useSettings } from '@/services/settings';
+import { startPushRegistration } from '@/services/push';
 import { startSync } from '@/services/sync';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
@@ -66,6 +67,7 @@ export default function RootLayout() {
         await initNotifications();
         await initAuth();
         startSync();
+        startPushRegistration();
         setReady(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
