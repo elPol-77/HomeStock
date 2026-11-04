@@ -1,4 +1,4 @@
-import { all, first, insertRow, nowIso, run, transaction, updateRow } from '@/db/client';
+import { all, first, householdId, insertRow, nowIso, run, transaction, updateRow } from '@/db/client';
 import { ISODate, todayISO } from '@/domain/dates';
 import { ExpiryKind } from '@/domain/expiry';
 import { findMergeableBatch, planConsumption } from '@/domain/inventory';
@@ -157,15 +157,20 @@ export async function markOpened(batchId: string, opened: boolean): Promise<void
 }
 
 /** Lotes con fecha próxima (para inicio y notificaciones). */
-export async function expiringBatches(untilDate: ISODate): Promise<
-  { id: string; product_id: string; product_name: string; image_url: string | null; quantity: number; expiry_date: ISODate; expiry_kind: ExpiryKind | null; location_name: string | null }[]
+/** Lotes que caducan antes de `untilDate`: de la casa activa o, con `allHouseholds`, de todas (para los avisos). */
+export async function expiringBatches(
+  untilDate: ISODate,
+  opts: { allHouseholds?: boolean } = {},
+): Promise<
+  { id: string; product_id: string; product_name: string; image_url: string | null; quantity: number; expiry_date: ISODate; expiry_kind: ExpiryKind | null; location_name: string | null; household_name: string | null }[]
 > {
   return all(
-    `SELECT b.id, b.product_id, p.name AS product_name, p.image_url, b.quantity, b.expiry_date, b.expiry_kind, l.name AS location_name
-     FROM batches b JOIN products p ON p.id = b.product_id LEFT JOIN locations l ON l.id = b.location_id
+    `SELECT b.id, b.product_id, p.name AS product_name, p.image_url, b.quantity, b.expiry_date, b.expiry_kind, l.name AS location_name, h.name AS household_name
+     FROM batches b JOIN products p ON p.id = b.product_id LEFT JOIN locations l ON l.id = b.location_id LEFT JOIN households h ON h.id = b.household_id
      WHERE b.deleted = 0 AND p.deleted = 0 AND b.quantity > 0 AND b.expiry_date IS NOT NULL AND b.expiry_date <= ?
+       ${opts.allHouseholds ? '' : 'AND b.household_id = ?'}
      ORDER BY b.expiry_date`,
-    [untilDate],
+    opts.allHouseholds ? [untilDate] : [untilDate, householdId()],
   );
 }
 

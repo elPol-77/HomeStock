@@ -68,10 +68,11 @@ export async function rescheduleAll(): Promise<number> {
   const perm = await Notifications.getPermissionsAsync();
   if (!perm.granted) return 0;
   const s = settings();
-  const batches = await expiringBatches(addDays(todayISO(), 50));
+  const batches = await expiringBatches(addDays(todayISO(), 50), { allHouseholds: true });
+  const multiHouse = new Set(batches.map((b) => b.household_name)).size > 1;
   const pending = s.notifShopping ? await pendingItemsCount() : 0;
   const plan = planNotifications(
-    batches.map((b) => ({ productName: b.product_name, quantity: b.quantity, expiryDate: b.expiry_date, kind: b.expiry_kind, locationName: b.location_name })),
+    batches.map((b) => ({ productName: b.product_name, quantity: b.quantity, expiryDate: b.expiry_date, kind: b.expiry_kind, locationName: multiHouse && b.household_name ? [b.location_name, b.household_name].filter(Boolean).join(' · ') : b.location_name })),
     { expiryEnabled: s.notifExpiry, warnDays: s.warnDays, hour: s.notifyHour, shoppingReminderEnabled: s.notifShopping, shoppingWeekday: s.shoppingWeekday },
     pending,
   );

@@ -21,7 +21,8 @@ import { BundledItem, matchBundled } from '@/services/catalog/bundled';
 import { storeName } from '@/services/catalog/stores';
 import { haptic } from '@/services/haptics';
 import { toast } from '@/services/toast';
-import { Confidence, DetectedItem, detectProductsInPhoto, GEMINI_KEY_URL, getVisionKey, setVisionKey, testVisionKey, VisionError } from '@/services/vision';
+import { Confidence, DetectedItem, detectProductsInPhoto, GEMINI_KEY_URL, setVisionKey, testVisionKey, VisionError, VisionMode, visionMode } from '@/services/vision';
+import { useAuth } from '@/services/auth';
 import { useTheme } from '@/theme/ThemeProvider';
 
 const CONF: Record<Confidence, { label: string; tone: 'success' | 'warning' | 'danger' }> = {
@@ -39,13 +40,18 @@ interface Row {
   catalog: BundledItem | null;
 }
 
-function KeySetup({ onSaved }: { onSaved: () => void }) {
+function KeySetup({ onSaved, note }: { onSaved: () => void; note?: string }) {
   const { colors } = useTheme();
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <Screen title="Foto de la nevera" subtitle="Reconoce varios productos de una sola foto" back bottomInset="safe">
+      {note ? (
+        <Card tone="warning">
+          <Text variant="caption">{note}</Text>
+        </Card>
+      ) : null}
       <Card tone="primary" style={{ gap: 10 }}>
         <Row gap={10}>
           <Ionicons name="sparkles" size={22} color={colors.primary} />
@@ -91,9 +97,30 @@ function KeySetup({ onSaved }: { onSaved: () => void }) {
   );
 }
 
+function LoginGate({ onOwnKey }: { onOwnKey: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Screen title="Foto de la nevera" subtitle="Reconoce varios productos de una sola foto" back bottomInset="safe">
+      <Card tone="primary" style={{ gap: 12, alignItems: 'center', paddingVertical: 24 }}>
+        <Ionicons name="sparkles" size={40} color={colors.primary} />
+        <Text variant="heading" align="center">
+          Inicia sesión y listo
+        </Text>
+        <Text variant="body" color="textMuted" align="center">
+          El reconocimiento con IA es gratis y automático: no tienes que configurar nada. Solo necesitamos saber que eres tú para repartir el cupo diario.
+        </Text>
+        <Button title="Iniciar sesión o crear cuenta" icon="log-in-outline" onPress={() => router.push('/auth/login')} style={{ alignSelf: 'stretch' }} />
+      </Card>
+      <Button title="Usar mi propia clave de Gemini (avanzado)" variant="ghost" size="sm" onPress={onOwnKey} />
+    </Screen>
+  );
+}
+
 export default function FridgePhoto() {
   const { colors, reduceMotion } = useTheme();
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<VisionMode | 'setup' | null>(null);
+  const [setupNote, setSetupNote] = useState<string | undefined>(undefined);
+  const session = useAuth((a) => a.session);
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<VisionError | null>(null);
@@ -104,13 +131,16 @@ export default function FridgePhoto() {
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    getVisionKey().then((k) => setHasKey(!!k));
     listLocations().then((l) => {
       setZones(l);
       setZoneId(suggestZone({ name: 'refrigerado', category: 'Lácteos y huevos' }, l)?.id ?? l[0]?.id ?? null);
     });
     return () => abort.current?.abort();
   }, []);
+
+  useEffect(() => {
+    visionMode().then(setMode);
+  }, [session]);
 
   const analyze = async (uri: string) => {
     setPhoto(uri);
@@ -136,6 +166,7 @@ export default function FridgePhoto() {
       if (e instanceof VisionError && e.code === 'bad_key') {
         await setVisionKey(null);
       }
+      if (e instanceof VisionError && e.code === 'login') setMode('login');
     } finally {
       setBusy(false);
     }
@@ -182,13 +213,14 @@ export default function FridgePhoto() {
     }
   };
 
-  if (hasKey === null)
+  if (mode === null)
     return (
       <Screen back>
         <SkeletonList rows={3} />
       </Screen>
     );
-  if (!hasKey) return <KeySetup onSaved={() => setHasKey(true)} />;
+  if (mode === 'setup') return <KeySetup note={setupNote} onSaved={() => setMode('own')} />;
+  if (mode === 'login') return <LoginGate onOwnKey={() => setMode('setup')} />;
 
   if (!photo) {
     return (
@@ -230,7 +262,11 @@ export default function FridgePhoto() {
         <ErrorState
           message={error.message}
           onRetry={() => {
-            if (error.code === 'bad_key' || error.code === 'no_key') setHasKey(false);
+            if (error.code === 'bad_key' || error.code === 'no_key') setMode('setup');
+            else if (error.code === 'not_configured') {
+              setSetupNote(error.message + ' Mientras tanto puedes usar tu propia clave gratuita.');
+              setMode('setup');
+            } else if (error.code === 'login') setMode('login');
             else if (photo) analyze(photo);
           }}
         />

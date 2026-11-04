@@ -5,9 +5,9 @@ import { Alert, Share, View } from 'react-native';
 
 import { Badge, Button, Card, Divider, IconButton, Row, Screen, SectionTitle, SwitchRow, Text, TextField } from '@/components/ui';
 import { useLiveQuery } from '@/db/events';
-import { getHousehold, renameHousehold } from '@/data/household';
+import { createHousehold, getHousehold, listHouseholds, renameHousehold } from '@/data/household';
 import { useAuth } from '@/services/auth';
-import { getInviteCode, joinHousehold, listMembers, Member, publishHousehold, regenerateInviteCode, removeMember, renameRemoteHousehold, setMemberRole } from '@/services/householdRemote';
+import { getInviteCode, joinHousehold, leaveOrRemoveHousehold, listMembers, Member, publishHousehold, regenerateInviteCode, removeMember, renameRemoteHousehold, setMemberRole, switchHousehold } from '@/services/householdRemote';
 import { isCloudConfigured } from '@/services/supabase';
 import { toast } from '@/services/toast';
 
@@ -19,7 +19,9 @@ export default function HouseholdSettings() {
   const [code, setCode] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [joinCode, setJoinCode] = useState('');
-  const [merge, setMerge] = useState(true);
+  const [merge, setMerge] = useState(false);
+  const houses = useLiveQuery(listHouseholds, ['households', 'products']);
+  const [newHouse, setNewHouse] = useState('');
   const [busy, setBusy] = useState(false);
   const isAdmin = h?.role === 'admin';
 
@@ -56,8 +58,68 @@ export default function HouseholdSettings() {
 
   return (
     <Screen title="Hogar y familia" back bottomInset="safe">
+      <SectionTitle title="Mis casas" />
+      <Card style={{ gap: 0, paddingVertical: 4 }}>
+        {(houses.data ?? []).map((x, i) => (
+          <View key={x.id}>
+            {i > 0 ? <Divider /> : null}
+            <Row style={{ paddingVertical: 10 }}>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text variant="bodyStrong" numberOfLines={1}>
+                  {x.name}
+                </Text>
+                <Row gap={6}>
+                  {x.current ? <Badge label="Activa" tone="primary" icon="checkmark" /> : null}
+                  <Badge label={`${x.products} productos`} tone="neutral" />
+                  {x.remote ? <Badge label="Compartida" tone="info" icon="people-outline" /> : null}
+                </Row>
+              </View>
+              {!x.current ? <Button title="Abrir" size="sm" variant="secondary" onPress={() => run(() => switchHousehold(x.id), `Ahora estás en «${x.name}»`)} /> : null}
+              {(houses.data ?? []).length > 1 ? (
+                <IconButton
+                  icon="trash-outline"
+                  tone="danger"
+                  label={`Quitar ${x.name}`}
+                  onPress={() =>
+                    Alert.alert(
+                      `¿Quitar «${x.name}»?`,
+                      x.remote
+                        ? 'Saldrás de esta casa compartida y se borrará de este móvil. Los demás miembros la seguirán teniendo.'
+                        : 'Se borrarán de este móvil su inventario, zonas y listas. No se puede deshacer.',
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { text: x.remote ? 'Salir y quitar' : 'Quitar', style: 'destructive', onPress: () => run(() => leaveOrRemoveHousehold(x.id, !!x.remote), 'Casa quitada') },
+                      ],
+                    )
+                  }
+                />
+              ) : null}
+            </Row>
+          </View>
+        ))}
+      </Card>
+      <Card tone="alt" style={{ gap: 10 }}>
+        <Text variant="caption" color="textMuted">
+          ¿Llevas también la casa de tus padres o un apartamento? Añádela aquí: cada casa tiene su inventario, zonas y listas. Cambias de una a otra tocando el nombre en Inicio.
+        </Text>
+        <TextField placeholder="Ej.: Casa de papá" value={newHouse} onChangeText={setNewHouse} maxLength={40} />
+        <Button
+          title="Añadir casa"
+          icon="add"
+          variant="secondary"
+          disabled={!newHouse.trim() || busy}
+          onPress={() =>
+            run(async () => {
+              await switchHousehold(await createHousehold(newHouse));
+              setNewHouse('');
+            }, 'Casa creada y abierta')
+          }
+        />
+      </Card>
+
+      <SectionTitle title={`Casa activa: ${h?.name ?? ''}`} />
       <Card style={{ gap: 12 }}>
-        <TextField label="Nombre del hogar" value={name} onChangeText={setName} editable={!h?.remote || isAdmin} />
+        <TextField label="Nombre de la casa" value={name} onChangeText={setName} editable={!h?.remote || isAdmin} />
         <Button
           title="Guardar nombre"
           variant="secondary"
@@ -87,22 +149,22 @@ export default function HouseholdSettings() {
         </Card>
       ) : !h?.remote ? (
         <>
-          <SectionTitle title="Compartir este hogar" />
+          <SectionTitle title="Compartir esta casa" />
           <Card style={{ gap: 10 }}>
             <Text variant="body">Sube tu hogar a la nube y obtén un código para invitar a tu familia. Tus datos se sincronizarán entre dispositivos.</Text>
             <Button title="Compartir mi hogar" icon="cloud-upload-outline" loading={busy} onPress={() => run(publishHousehold, 'Hogar compartido')} />
           </Card>
-          <SectionTitle title="Unirme a otro hogar" />
+          <SectionTitle title="Unirme a la casa de un familiar" />
           <Card style={{ gap: 10 }}>
             <TextField label="Código de invitación" placeholder="AB12CD34" value={joinCode} onChangeText={(t) => setJoinCode(t.toUpperCase())} autoCapitalize="characters" maxLength={8} />
-            <SwitchRow label="Llevarme mis datos" description="Añade tus productos y listas actuales al hogar al que te unes. Si lo desactivas, se borran de este móvil." value={merge} onChange={setMerge} />
+            <SwitchRow label="Pasar mis datos a esa casa" description="Actívalo solo si es tu misma casa (p. ej. tu pareja ya la creó). Si no, tu casa actual se queda en este móvil como otra casa más." value={merge} onChange={setMerge} />
             <Button
               title="Unirme"
               icon="enter-outline"
               disabled={joinCode.length < 6}
               loading={busy}
               onPress={() =>
-                Alert.alert('¿Unirte a este hogar?', merge ? 'Tus datos se combinarán con los del hogar.' : 'Tus datos actuales se borrarán de este móvil.', [
+                Alert.alert('¿Unirte a esta casa?', merge ? 'Los productos y listas de tu casa activa pasarán a esa casa.' : 'Se añadirá como otra casa; la tuya se queda igual.', [
                   { text: 'Cancelar', style: 'cancel' },
                   { text: 'Unirme', onPress: () => run(async () => toast(`Te has unido a «${await joinHousehold(joinCode, merge)}»`)) },
                 ])

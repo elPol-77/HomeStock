@@ -5,10 +5,10 @@ import { ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { GettingStarted } from '@/components/GettingStarted';
+import { HouseSwitcher } from '@/components/HouseSwitcher';
 import { ProductThumb } from '@/components/ProductThumb';
 import { AnimatedNumber, Badge, Button, Card, EmptyState, ProgressBar, Row, ScalePressable, Screen, SectionTitle, Skeleton, Text } from '@/components/ui';
 import { useLiveQuery } from '@/db/events';
-import { getHousehold } from '@/data/household';
 import { homeSummary } from '@/data/summary';
 import { formatShortDate, relativeDays, todayISO } from '@/domain/dates';
 import { expiryStatus } from '@/domain/expiry';
@@ -69,7 +69,6 @@ export default function Home() {
   const restockOn = useSettings((s) => s.restockSuggestions);
   const syncStatus = useSync((s) => s.status);
   const { data, loading, reload } = useLiveQuery(() => homeSummary(warnDays), ['products', 'batches', 'stock_movements', 'list_items', 'shopping_lists', 'purchases', 'savings'], [warnDays]);
-  const household = useLiveQuery(getHousehold, ['households']);
   const [potential, setPotential] = useState<number | null>(null);
 
   const listId = data?.activeList?.id;
@@ -105,9 +104,7 @@ export default function Home() {
             {greeting()}
             {userName ? `, ${userName}` : ''}
           </Text>
-          <Text variant="title" accessibilityRole="header">
-            {household.data?.name ?? 'Mi casa'}
-          </Text>
+          <HouseSwitcher />
         </View>
         {syncStatus !== 'disabled' ? (
           <Badge

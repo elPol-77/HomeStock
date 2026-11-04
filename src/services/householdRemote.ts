@@ -1,4 +1,4 @@
-import { getHousehold, markHouseholdRemote, switchToHousehold } from '@/data/household';
+import { activateHousehold, getHousehold, markHouseholdRemote, removeHouseholdLocal, switchToHousehold } from '@/data/household';
 
 import { useAuth } from './auth';
 import { supabase } from './supabase';
@@ -83,4 +83,22 @@ export async function renameRemoteHousehold(name: string) {
   const h = await getHousehold();
   const { error } = await sb.from('households').update({ name }).eq('id', h!.id);
   if (error) throw new Error(error.message);
+}
+
+/** Cambia de casa activa y sincroniza la nueva si es compartida. */
+export async function switchHousehold(id: string) {
+  await activateHousehold(id);
+  resetRealtime();
+  syncNow();
+}
+
+/** Quita una casa de este móvil. Si es compartida, además te sales de ella en la nube. */
+export async function leaveOrRemoveHousehold(id: string, remote: boolean) {
+  if (remote && supabase && useAuth.getState().session) {
+    const { error } = await supabase.rpc('remove_member', { p_household: id, p_user: useAuth.getState().session!.user.id });
+    if (error) throw new Error(error.message.includes('at least one admin') ? 'Antes de salir, nombra a otro administrador.' : error.message);
+  }
+  await removeHouseholdLocal(id);
+  resetRealtime();
+  syncNow();
 }

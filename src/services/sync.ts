@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import { all, getSetting, householdId, run, setSetting } from '@/db/client';
 import { emitChange, subscribe } from '@/db/events';
 import { SYNC_TABLES, SyncTable } from '@/db/schema';
-import { getHousehold } from '@/data/household';
+import { activateHousehold, addRemoteHouseholdLocal, getHousehold, listHouseholds } from '@/data/household';
 import { recomputeAllBatches } from '@/data/stock';
 
 import { useAuth } from './auth';
@@ -75,7 +75,7 @@ async function pull(): Promise<{ total: number; newListItems: number }> {
   let newListItems = 0;
   const myId = useAuth.getState().session?.user.id;
   for (const table of SYNC_TABLES) {
-    const cursorKey = `sync:cursor:${table}`;
+    const cursorKey = `sync:cursor:${householdId()}:${table}`;
     let cursor = await getSetting<string>(cursorKey, '1970-01-01T00:00:00Z');
     // Primer lote con 30 s de solape: cubre transacciones que confirmaron tarde (los duplicados se ignoran).
     let since = new Date(Math.max(0, Date.parse(cursor) - 30000)).toISOString();
@@ -171,6 +171,33 @@ function schedulePush(delay = 2500) {
   pushTimer = setTimeout(() => syncNow(), delay);
 }
 
+/**
+ * Trae a este móvil las casas compartidas a las que perteneces (p. ej. al iniciar sesión en un móvil nuevo).
+ * Si la casa activa es la «Mi casa» vacía de serie, se activa la primera casa compartida.
+ */
+export async function discoverRemoteHouseholds(): Promise<number> {
+  const userId = useAuth.getState().session?.user.id;
+  if (!supabase || !userId) return 0;
+  const { data, error } = await supabase.from('household_members').select('role, households(id, name)').eq('user_id', userId);
+  if (error || !data) return 0;
+  const local = await listHouseholds();
+  let added = 0;
+  for (const row of data as unknown as { role: 'admin' | 'member'; households: { id: string; name: string } | null }[]) {
+    if (!row.households) continue;
+    if (!local.some((h) => h.id === row.households!.id)) added++;
+    await addRemoteHouseholdLocal(row.households.id, row.households.name, row.role);
+  }
+  const current = local.find((h) => h.current);
+  if (added > 0 && current && !current.remote && current.products === 0 && local.length === 1) {
+    const firstRemote = (data as unknown as { households: { id: string } | null }[]).find((r) => r.households)?.households;
+    if (firstRemote) {
+      await activateHousehold(firstRemote.id);
+      resetRealtime();
+    }
+  }
+  return added;
+}
+
 let started = false;
 export function startSync() {
   if (started || !supabase) return;
@@ -184,10 +211,18 @@ export function startSync() {
   });
   useAuth.subscribe((state, prev) => {
     if (state.session?.user.id !== prev.session?.user.id) {
-      resetRealtime();
-      syncNow();
+      discoverRemoteHouseholds()
+        .catch(() => 0)
+        .finally(() => {
+          resetRealtime();
+          syncNow();
+        });
     }
   });
-  syncNow();
-  subscribeRealtime().catch(() => {});
+  discoverRemoteHouseholds()
+    .catch(() => 0)
+    .finally(() => {
+      syncNow();
+      subscribeRealtime().catch(() => {});
+    });
 }

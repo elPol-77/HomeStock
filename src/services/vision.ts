@@ -5,10 +5,16 @@ import { Platform } from 'react-native';
 
 import { CATEGORIES } from '@/data/types';
 
+import { visionRequestBody } from '../../supabase/functions/_shared/visionPrompt';
+import { useAuth } from './auth';
+import { isCloudConfigured } from './supabase';
+
 /**
  * Reconocimiento de varios productos en una foto (nevera, despensa, compra en la mesa) con Gemini.
- * Usa la clave personal del usuario en el plan gratuito de Google AI Studio: la clave se guarda cifrada
- * en el móvil (SecureStore) y la foto se envía directamente a Google, reducida a 1600 px.
+ * Modo automático (por defecto): la foto va a la Edge Function «vision» de Supabase, que usa la clave
+ * gratuita del proyecto guardada como secreto en el servidor. Solo necesita sesión iniciada.
+ * Modo avanzado: si la persona guarda su propia clave, la foto va directa a Google con ella
+ * (cifrada en el móvil con SecureStore). En ambos casos la foto se reduce a 1600 px.
  * El resultado son PROPUESTAS: el usuario confirma cada producto antes de guardarlo.
  */
 
@@ -34,7 +40,7 @@ export interface DetectedItem {
 
 export class VisionError extends Error {
   constructor(
-    public code: 'no_key' | 'bad_key' | 'quota' | 'network' | 'blocked' | 'parse' | 'unknown',
+    public code: 'no_key' | 'bad_key' | 'quota' | 'daily_limit' | 'login' | 'not_configured' | 'network' | 'blocked' | 'parse' | 'unknown',
     message: string,
   ) {
     super(message);
@@ -75,40 +81,6 @@ export async function setVisionModel(model: string | null) {
 }
 
 const CATEGORY_NAMES = CATEGORIES.map((c) => c.name);
-
-const PROMPT = `Eres el asistente de inventario de una casa en España. Analiza la foto (una nevera, despensa, armario o compra sobre la mesa) e identifica TODOS los productos que se vean, uno por línea de producto distinto.
-Reglas:
-- Nombre en español, concreto y como se diría en una lista de la compra ("Leche entera", "Bebida de almendras sin azúcar", "Tomates", "Jamón cocido en lonchas").
-- Marca solo si se lee o es inequívoca por el envase (Hacendado, Consum, Coca-Cola, Navidul…); si no, null.
-- count: cuántos envases o piezas iguales se ven (estimación honesta; 1 si no está claro).
-- size: tamaño del envase si se lee (ej. "1 L", "125 g"); si no, null.
-- category: una de estas exactamente: ${CATEGORY_NAMES.join(', ')}.
-- confidence: "alta" si lees la etiqueta o es inconfundible; "media" si lo deduces por forma/color; "baja" si es una suposición.
-- evidence: en pocas palabras qué te hace identificarlo (texto leído, forma, color).
-- No inventes productos que no se vean. No incluyas el propio electrodoméstico, estantes ni recipientes vacíos. Si un táper o bolsa no deja ver el contenido, inclúyelo como "Táper con comida" o similar con confidence "baja".`;
-
-const SCHEMA = {
-  type: 'object',
-  properties: {
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          brand: { type: 'string', nullable: true },
-          count: { type: 'integer' },
-          size: { type: 'string', nullable: true },
-          category: { type: 'string', enum: CATEGORY_NAMES },
-          confidence: { type: 'string', enum: ['alta', 'media', 'baja'] },
-          evidence: { type: 'string', nullable: true },
-        },
-        required: ['name', 'count', 'category', 'confidence'],
-      },
-    },
-  },
-  required: ['items'],
-};
 
 /** Reduce la foto (lado mayor 1600 px, JPEG 0,7) y la devuelve en base64. */
 async function prepareImage(uri: string): Promise<string> {
@@ -152,10 +124,45 @@ export function parseVisionResponse(text: string): DetectedItem[] {
   return [...merged.values()];
 }
 
+export type VisionMode = 'own' | 'server' | 'login';
+
+/** Cómo se analizará la foto: clave propia, servidor (automático) o hace falta iniciar sesión. */
+export async function visionMode(): Promise<VisionMode> {
+  if (await getVisionKey()) return 'own';
+  if (isCloudConfigured && useAuth.getState().session) return 'server';
+  return 'login';
+}
+
+async function callServer(image: string, signal?: AbortSignal): Promise<DetectedItem[]> {
+  const session = useAuth.getState().session;
+  if (!isCloudConfigured || !session) throw new VisionError('login', 'Inicia sesión (es gratis) para reconocer productos automáticamente.');
+  let res: Response;
+  try {
+    res = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/vision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ image, categories: CATEGORY_NAMES }),
+      signal,
+    });
+  } catch {
+    throw new VisionError('network', 'Sin conexión. La foto de la nevera necesita internet.');
+  }
+  const json = (await res.json().catch(() => ({}))) as { text?: string; code?: VisionError['code']; message?: string };
+  if (!res.ok || !json.text) {
+    const code = json.code && ['login', 'not_configured', 'daily_limit', 'quota', 'blocked', 'parse'].includes(json.code) ? json.code : 'unknown';
+    throw new VisionError(code, json.message ?? `El servidor respondió con un error (${res.status}).`);
+  }
+  return parseVisionResponse(json.text);
+}
+
 export async function detectProductsInPhoto(uri: string, opts: { signal?: AbortSignal } = {}): Promise<DetectedItem[]> {
   const key = await getVisionKey();
-  if (!key) throw new VisionError('no_key', 'Falta tu clave gratuita de Gemini.');
   const image = await prepareImage(uri);
+  if (!key) return callServer(image, opts.signal);
   try {
     return await callVision(key, await getVisionModel(), image, opts.signal);
   } catch (e) {
@@ -177,10 +184,7 @@ async function callVision(key: string, model: string, image: string, signal?: Ab
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: PROMPT }, { inline_data: { mime_type: 'image/jpeg', data: image } }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: SCHEMA },
-      }),
+      body: JSON.stringify(visionRequestBody(image, CATEGORY_NAMES)),
       signal,
     });
   } catch {
