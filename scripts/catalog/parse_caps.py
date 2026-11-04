@@ -9,7 +9,7 @@ ocr = json.load(open(sys.argv[1]))
 ANCHOR = re.compile(r'a[ñn]adir\s*al\s*carro', re.I)
 PRICE = re.compile(r'(\d{1,3}(?:[.,]\d{1,2}))\s*€')
 FORMAT_WORDS = r'(bote|tarro|caja|paquete|botella|lata|latas|bandeja|pieza|brik|garrafa|bolsa|frasco|vaso|tarrina|pack|malla|sobre|sobres|estuche|tableta|barqueta|granel|cubo|tubo|spray|envase|tarrito|bolsita|cartucho|barra|rollo|rollos|bidón|bidon|bombona|blister|blíster|copa|unidad|unidades|docena|lote|saco|tetrabrik|cápsulas|capsulas|cesta|bandejas|paquetes|botellas|briks|tarros|vasos|tarrinas|botes|cajas|cuña|loncha|lonchas|ud\.|\d+\s*ud)'
-FORMAT = re.compile(r'^\s*(' + FORMAT_WORDS + r')\b|\d\s*(g|kg|ml|l|cl|ud)\b\.?|\bx\s*\d', re.I)
+FORMAT = re.compile(r'^\s*(' + FORMAT_WORDS + r')\b|\d\s*(g|kg|ml|l|cl|ud)\b\.?|[x×]\s*\d', re.I)
 HEADING_SKIP = re.compile(r'(mercadona|buscar|categor|listas|identif|pol[ií]tica|t[ée]rminos|atenci[óo]n|espa[ñn]ol|^ver\s)', re.I)
 
 
@@ -125,6 +125,8 @@ for fname, lines in ocr.items():
             'price_unit': forced_unit or unit_of(ptext.split('€')[-1]),
             'top': names[-1]['top'],
             'x': text_left,
+            'pitch': pitch,
+            'lh': h,
             'score': min(x['score'] for x in [*names, *price_row]),
             'raw_price': ptext,
         })

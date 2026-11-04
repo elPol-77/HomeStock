@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { AppIcon } from '@/components/ui/AppIcon';
 import { CATEGORIES } from '@/data/types';
+import { BUNDLED_IMAGES } from '@/services/catalog/bundledImages';
 import { useTheme } from '@/theme/ThemeProvider';
 
 
@@ -25,16 +26,24 @@ export function CategoryBadge({ category, size = 40 }: { category: string | null
   );
 }
 
+/** Resuelve una imagen guardada como texto: URL normal o foto incluida en la app ("bundled:<id>"). */
+export function imageSource(uri: string | null | undefined): number | { uri: string } | null {
+  if (!uri) return null;
+  if (uri.startsWith('bundled:')) return BUNDLED_IMAGES[uri.slice(8)] ?? null;
+  return { uri };
+}
+
 /** Foto del producto con respaldo de icono de categoría si no hay imagen o falla la carga. */
 export function ProductThumb({ uri, category, size = 52 }: { uri?: string | null; category?: string | null; size?: number }) {
   const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
   const r = size * 0.27;
-  if (uri && !failed) {
+  const source = imageSource(uri);
+  if (source && !failed) {
     return (
       <View style={{ width: size, height: size, borderRadius: r, backgroundColor: '#FFFFFF', overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
         <Image
-          source={{ uri }}
+          source={source}
           style={{ width: '100%', height: '100%' }}
           contentFit="contain"
           transition={180}

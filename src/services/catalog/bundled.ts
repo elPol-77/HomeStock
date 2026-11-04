@@ -3,6 +3,7 @@ import { compareProducts, stripSize } from '@/domain/matching';
 import { normalizeText, tokenize } from '@/domain/text';
 import { PackageSize, parsePackageSize } from '@/domain/units';
 
+import { BUNDLED_IMAGES } from './bundledImages';
 import type { CatalogProduct } from './types';
 
 /**
@@ -92,7 +93,7 @@ export function bundledItems(): BundledItem[] {
         section: r.s,
         capturedAt: cat.capturedAt,
         sourceNote: cat.source,
-        imageUrl: r.i ?? null,
+        imageUrl: BUNDLED_IMAGES[r.id] ? `bundled:${r.id}` : (r.i ?? null),
         barcode: r.e ?? null,
         tokens: tokenize(`${r.n} ${r.s ?? ''}`),
         norm: normalizeText(`${r.n} ${r.f ?? ''}`),

@@ -19,6 +19,13 @@ BRANDS = [
     'Don Simón', 'Ramón Bilbao', 'Protos', 'Viña Pomal', 'Marqués de Cáceres', 'Freixenet', 'Codorníu', 'Cune', 'Faustino',
     'El Gaitero', 'Trapiche', 'Lambrusco', 'Casera', 'Gallo', 'Ybarra', 'Carbonell', 'Calvo', 'Isabel', 'Orlando', 'Gullón',
     'Cuétara', 'Fontaneda', 'Danone', 'Pascual', 'Puleva', 'Kaiku', 'Central Lechera Asturiana',
+    'Schweppes', 'Pringles', 'Valor', 'Ultrex', 'Pantene', 'Gillette', 'Nivea', 'Dove', 'Activia', 'Alpro', 'Kit-Kat',
+    'Monster Energy', 'Aquarius', 'Fuze Tea', 'La Verja', 'Delikuit', 'Nuske', 'Granzoo', 'Asturiana', 'Turia', 'Paulaner',
+    'Nidina', 'Hero Solo', 'Ruiz', 'Wasa', 'Anitin', 'La Muralla', 'Inés Rosales', 'Buitoni', 'Royal', 'Levital', 'Mission',
+    'Delibreads', 'Galbusera', 'Bachman', 'Pescanova', 'MareDeus', 'Nortindal', 'Royal Greenland', 'Ubago', 'Colorcor',
+    'Excellence Creme', 'Color Sensation', 'Alitey', 'Sprite', 'Iso drink', 'Maltín Polar', 'El Águila', 'Gallina Blanca',
+    'Quartett', 'Gourmet Gold', 'Purina', 'Sabroz', 'Tivall', 'Heinz', 'Campina', 'Bifrutas', 'Actimel', 'Danonino',
+    'Danacol', 'Cuidacol', 'L-casei', 'Petit', 'Nenuco', 'Colgate', 'Sensodyne', 'Oral-B', 'Listerine', 'Ausonia', 'Tampax',
 ]
 BRANDS.sort(key=len, reverse=True)
 
@@ -43,19 +50,24 @@ def brand_of(name):
     return {'ElPozo': 'El Pozo', 'Lambrusco': None}.get(b, b)
 
 
-FROZEN_PAGES = {'carne', 'fruta y verdura', 'arroz y pasta', 'helados', 'hielo', 'marisco', 'pescado', 'pizzas', 'rebozados', 'tartas y churros'}
+FROZEN_PAGES = {'fruta y verdura', 'arroz y pasta', 'helados', 'hielo', 'pescado congelado', 'pizzas', 'rebozados', 'tartas y churros', 'carne congelada'}
 
 RULES = [
-    ('Bebé', r'biber|bebe|panal|infantil|toallita|potito|tarrito|papilla|leche de continuacion|leche de crecimiento'),
-    ('Panadería y desayuno', r'\bcafe\b|cafe |capsula|cacao|\bte\b|infusion|cereal|muesli|galleta|tortita|mermelada|\bpan\b|bolleria|barrita'),
-    ('Bebidas', r'cerveza|vino|sidra|cava|tinto|lambrusco|rosado|\bagua\b|refresco|zumo|isotonic|tonica|gaseosa|bebida|licor|sangria|vermut'),
-    ('Lácteos y huevos', r'queso|leche|yogur|huevo|mantequilla|postre|nata|requeson|mozzarella|burrata'),
-    ('Carne y pescado', r'vacuno|cerdo|pollo|\baves\b|conejo|cordero|embutido|jamon|chopped|mortadela|bacon|salchich|pate|sobrasada|hamburguesa|arreglo|empanado|elaborado|\bcarne\b|marisco|pescado|lomo|chorizo|salchichon|pavo'),
-    ('Despensa', r'golosina|aceituna|encurtido|pepinillo|snack|patatas fritas|mayonesa|ketchup|mostaza|alioli|allioli|coctel|banderilla|chicle|caramelo|vinagre|harina|tomate frito|turron|azucar|chocolate|\barroz\b|legumbre|pasta|aceite|especia|salsa|conserva|caldo|aperitivo|dulce|bombon|caramelo|frutos secos'),
+    ('Bebé', r'\bbebes?\b|panal|infantil|biberon|chupete|potito|tarrito|papilla|toallitas y panales'),
+    ('Mascotas', r'^(gato|perro)\b|pajaro|mascota|pienso|arena para gato|perro|gato adulto|gato junior'),
+    ('Higiene personal', r'champu|acondicionador|mascarilla|coloracion|fijacion|cabello|afeitado|desodorante|\bgel\b|jabon|dental|bucal|dentifrico|higiene|compresa|tampon|protegeslip|manicura|pedicura|perfume|colonia|solar|aftersun|maquillaje|labios|\bojos\b|colorete|polvos|pinceles|facial|corporal|depilacion|fitoterapia|parafarmacia|botiquin|preservativo|toallitas'),
+    ('Lavandería', r'detergente|suavizante|quitamanchas|planchado|lavadora|activador|perfumador ropa'),
+    ('Limpieza', r'limpieza|lejia|liquidos fuertes|friegasuelos|limpiahogar|limpiacristales|estropajo|bayeta|guantes|insecticida|ambientador|lavavajillas|vajilla|menaje|conservacion de alimentos|bolsas de basura|pilas|utensilios|fregona|escoba|amoniaco|salfuman|piscina|celulosa|servilleta|rollo cocina|papel higienico|panuelos'),
+    ('Bebidas', r'refresco|zumo|nectar|smoothie'),
+    ('Lácteos y huevos', r'bifidus|natilla|\bflan\b|gelatina|kefir|cuajada|yogur|postre'),
+    ('Panadería y desayuno', r'\bpicos\b|picatoste|rosquilleta|regana|grissini'),
+    ('Panadería y desayuno', r'\bcafe\b|capsula|cacao|\bte\b|infusion|cereal|muesli|galleta|tortita|mermelada|\bpan\b|panaderia|bolleria|barrita|\bmiel\b'),
+    ('Despensa', r'chocolate|bombon|turron|golosina|chicle|caramelo|frutos secos|fruta desecada|conserva|cocktail|berberecho|mejillon|almeja|atun|sardina|bonito'),
+    ('Lácteos y huevos', r'queso|leche|yogur|huevo|mantequilla|margarina|postre|\bnata\b|requeson|mozzarella|burrata|batido'),
+    ('Bebidas', r'cerveza|vino|sidra|cava|tinto|lambrusco|rosado|\bagua\b|refresco|zumo|isotonic|energetico|tonica|bitter|gaseosa|bebida|licor|sangria|vermut'),
+    ('Carne y pescado', r'vacuno|cerdo|pollo|\baves\b|conejo|cordero|embutido|jamon|chopped|mortadela|bacon|salchich|pate|sobrasada|hamburguesa|arreglo|empanado|elaborado|\bcarne\b|marisco|pescado|salazon|ahumado|lomo|chorizo|salchichon|pavo'),
     ('Frutas y verduras', r'fruta|verdura|lechuga|ensalada|hortaliza'),
-    ('Limpieza', r'limpieza|lejia|friegasuelos|lavavajillas|bayeta'),
-    ('Higiene personal', r'gel|champu|dental|desodorante|higiene|papel higienico|compresa'),
-    ('Mascotas', r'perro|gato|mascota|pienso'),
+    ('Despensa', r'golosina|aceituna|encurtido|pepinillo|snack|aperitivo|patatas fritas|mayonesa|ketchup|mostaza|alioli|allioli|coctel|banderilla|chicle|caramelo|vinagre|harina|tomate|turron|azucar|chocolate|\barroz\b|legumbre|pasta|aceite|especia|salsa|conserva|caldo|sopa|crema|gazpacho|dulce|bombon|frutos secos|edulcorante|sal\b'),
 ]
 
 
@@ -74,6 +86,7 @@ def category_of(name, page, section):
 
 
 def fix_text(s):
+    s = s.replace('×', 'x')
     s = re.sub(r'\s+', ' ', s).strip()
     s = re.sub(r'\.\.\.$|…$', '…', s)
     s = re.sub(r'(\d)\s*,\s*(\d)', r'\1,\2', s)
@@ -81,19 +94,21 @@ def fix_text(s):
 
 
 out = {}
+cards = {}
 rejected = []
 for path in sys.argv[2:]:
     for it in json.load(open(path))['items']:
-        name = fix_text(it['name'])
+        raw = re.sub(r'\s+[\d\s]*[x×]\s*\W.*$', '', it['name'])  # formato ilegible pegado al nombre
+        name = re.sub(r'^(novedad|nuevo)\s+', '', fix_text(raw), flags=re.I)
         fmt = fix_text(it['format']) if it['format'] else None
         if not re.search(r'[a-zA-Záéíóúñ]{3}', name) or re.search(r'€|a[ñn]adir', name, re.I) or not (0.05 <= it['price'] <= 600):
             rejected.append(it)
             continue
-        if re.fullmatch(r'(lata|botella|botell[ií]n|paquete|caja|bote|tarro|bandeja|brik|pack|pieza|garrafa|bolsa)\b.*\d.*', name, re.I):
+        if re.match(r'\d+\s+(mini\s+)?\w+\s*x\s*\d', name) or re.fullmatch(r'(lata|botella|botell[ií]n|paquete|caja|bote|tarro|bandeja|brik|pack|pieza|garrafa|bolsa)\b.*\d.*', name, re.I):
             rejected.append(it)
             continue
         old = it['old_price']
-        if old and old > 1.6 * it['price']:
+        if old and old > 2.0 * it['price']:
             # El precio tachado es pequeño y gris: el OCR confunde a menudo el "1" inicial con un "4".
             s_old = f"{old:.2f}"
             if s_old.startswith('4'):
@@ -107,6 +122,7 @@ for path in sys.argv[2:]:
         if key in out:
             continue
         unit = it['price_unit']
+        cards[key] = {'file': it['file'], 'x': it['x'], 'top': it['top'], 'pitch': it.get('pitch'), 'lh': it.get('lh')}
         out[key] = {
             'id': 'mc-' + hashlib.sha1(key.encode()).hexdigest()[:10],
             'n': name,
@@ -125,3 +141,5 @@ json.dump({'store': 'mercadona', 'capturedAt': CAPTURED_AT, 'source': 'Web públ
 print(len(items), 'items;', len(rejected), 'rejected')
 from collections import Counter
 print(Counter(i['c'] for i in items))
+
+json.dump({out[k]['id']: cards[k] for k in out}, open(sys.argv[1].replace('.json', '.cards.json'), 'w'))
