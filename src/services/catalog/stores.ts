@@ -5,7 +5,7 @@ import { normalizeText } from '@/domain/text';
  * Ninguna de las cadenas prioritarias ofrece hoy una API pública autorizada de catálogo o precios;
  * por eso sus conectores están "no disponibles" y los datos vienen de tickets, del hogar y de Open Prices.
  */
-export type ConnectorStatus = 'available' | 'no_public_api' | 'planned';
+export type ConnectorStatus = 'available' | 'bundled' | 'no_public_api' | 'planned';
 
 export interface StoreChainInfo {
   id: string;
@@ -22,7 +22,7 @@ const NOTE =
   'Sin API pública ni acuerdo de datos. No se hace scraping. Precios desde tus tickets, tu hogar y Open Prices. El conector se activará si la cadena publica una fuente autorizada.';
 
 export const STORE_CHAINS: StoreChainInfo[] = [
-  { id: 'mercadona', name: 'Mercadona', color: '#1E8A4C', priority: 1, connector: 'no_public_api', connectorNote: NOTE, aliases: ['mercadona'] },
+  { id: 'mercadona', name: 'Mercadona', color: '#1E8A4C', priority: 1, connector: 'bundled', connectorNote: 'Catálogo incluido en la app (nombre, formato y precio de su web, con fecha). Sin conexión y sin cuenta.', aliases: ['mercadona'] },
   { id: 'consum', name: 'Consum', color: '#F28C00', priority: 2, connector: 'no_public_api', connectorNote: NOTE, aliases: ['consum', 'charter'] },
   { id: 'lidl', name: 'Lidl', color: '#0050AA', priority: 3, connector: 'no_public_api', connectorNote: NOTE, aliases: ['lidl'] },
   { id: 'carrefour', name: 'Carrefour', color: '#1E5BC6', priority: 4, connector: 'no_public_api', connectorNote: NOTE, aliases: ['carrefour', 'carrefour market', 'carrefour express'] },

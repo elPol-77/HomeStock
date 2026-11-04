@@ -1,56 +1,116 @@
-# Welcome to your Expo app 👋
+# HomeStock
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Inventario doméstico inteligente para Android: qué tienes en casa, qué caduca, qué falta, dónde comprarlo más barato y cuánto gastas. Hecho con Expo (React Native), funciona **sin conexión** y sincroniza entre los miembros del hogar cuando hay cuenta. Coste de funcionamiento: **0 €** (todo con planes gratuitos y servicios abiertos).
 
-## Get started
+## Qué hace
 
-1. Install dependencies
+- **Inventario** por lotes (cantidad, caducidad, ubicación, mínimo), botones + / −, consumo FEFO (primero lo que antes caduca), sin duplicados al volver a comprar.
+- **Añadir productos** de 5 formas: catálogo del súper (sin conexión), código de barras (Open Food Facts y bases hermanas), foto del envase (OCR en el móvil + catálogo, siempre indicando el grado de certeza), ticket de compra (OCR) o a mano.
+- **Fecha de caducidad por OCR**: distingue «consumir antes de» (seguridad) de «consumir preferentemente» (calidad); pasado el consumo preferente **no** se marca como peligroso.
+- **Notificaciones locales**: caducidad (agrupadas por día), stock bajo, agotado, recordatorio de compra y ahorro. Canales Android independientes.
+- **Listas de la compra** con autocompletado desde tu casa y desde el catálogo del súper, sugerencias según tu consumo, modo compra (pantalla siempre encendida) y **Finalizar compra** que mete lo comprado en el inventario.
+- **Comparador de precios**: por producto (idéntico vs. alternativa, precio por kg/L) y de la compra completa con opciones **A** (una tienda), **B** (varias, con coste de desplazamiento) y **C** (tus favoritas). Cada precio muestra **fuente y fecha**; nunca se inventan precios.
+- **Estadísticas**: gasto por semana/mes/categoría, productos más comprados, desperdicio y ahorro (el verificado separado del estimado).
+- **Hogar compartido** con roles (propietario, admin, miembro), código de invitación y sincronización en tiempo real (Supabase).
+- Diseño: verde salvia, blancos cálidos, modo claro/oscuro, animaciones con «reducir movimiento», vibración opcional, textos accesibles.
 
-   ```bash
-   npm install
-   ```
+## Fuentes de datos (todas gratuitas)
 
-2. Start the app
+| Fuente | Para qué | Notas |
+|---|---|---|
+| Catálogo del súper incluido (`assets/catalog/`) | Buscar productos sin conexión, autocompletar listas, precio de referencia | Mercadona, capturas del 04/11/2026: nombre, formato y precio (sin imágenes). Se muestra siempre con su fecha. |
+| Open Food Facts (+ Beauty / Products / Pet Food) | Código de barras y búsqueda | API abierta, con caché local 30 días. |
+| Open Prices | Precios públicos por código de barras | Filtro por distancia y antigüedad. |
+| Tus tickets y precios manuales | Precios reales de tu zona | La fuente más fiable. |
+| Nominatim (OpenStreetMap) | Código postal → coordenadas | Una consulta al guardar el CP. |
 
-   ```bash
-   npx expo start
-   ```
+Las cadenas (Mercadona, Consum, Lidl, Carrefour, Alcampo, DIA, Aldi, Eroski…) no publican una API abierta de precios; su «conector» aparece como no disponible y la arquitectura (`src/services/catalog/`) permite añadir uno en cuanto exista una fuente autorizada. El modo «Precios de demostración» existe solo para probar y sus precios llevan la etiqueta **DEMO**.
 
-In the output, you'll find options to open the app in a
+> Aviso: el catálogo incluido reproduce nombres, formatos y precios públicos con fines de comparación personal. Antes de publicar la app en Google Play conviene revisar con un abogado las condiciones de uso de cada web.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Puesta en marcha
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Requisitos: Node 20+, Java 17, Android SDK (o una cuenta gratuita de Expo para compilar en la nube).
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env      # rellena las variables (ver abajo)
+npx expo start            # desarrollo con un "development build"
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+### Variables de entorno (`.env`)
 
-### Other setup steps
+| Variable | Obligatoria | Valor |
+|---|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | Para cuentas/sincronización | `https://<project-id>.supabase.co` |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Para cuentas/sincronización | Clave **anon / publishable** (es pública). **Nunca** pongas la `service_role`. |
+| `EXPO_PUBLIC_OFF_CONTACT` | Recomendada | Un email o web de contacto para el User-Agent de Open Food Facts. |
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Sin Supabase la app funciona completa en modo local (un solo móvil).
 
-## Learn more
+### Supabase (plan gratuito)
 
-To learn more about developing your project with Expo, look at the following resources:
+1. Crea el proyecto y copia URL y clave anon en `.env`.
+2. SQL Editor → pega y ejecuta `supabase/migrations/0001_homestock.sql` (tablas, RLS, funciones de hogar e invitaciones). Es idempotente.
+3. Authentication → URL Configuration → añade `homestock://auth/callback` y `homestock://auth/reset` a *Redirect URLs*.
+4. (Opcional, avisos push entre miembros) despliega `supabase/functions/notify-household` y crea un Database Webhook sobre `list_items` (INSERT) con la cabecera `x-webhook-secret` = `HOMESTOCK_WEBHOOK_SECRET`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Las políticas RLS están probadas con PGlite: `node supabase/tests/rls.test.mjs`.
 
-## Join the community
+## Compilar el APK
 
-Join our community of developers creating universal apps.
+**En tu ordenador (gratis, sin cuenta):**
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npx expo prebuild -p android
+cd android && ./gradlew assembleRelease
+# APK: android/app/build/outputs/apk/release/app-release.apk
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
+
+**En la nube con EAS (plan gratuito, cola compartida):** `npm i -g eas-cli && eas build -p android --profile preview`.
+
+El OCR usa ML Kit en el propio móvil (módulo local `modules/homestock-ocr`), por eso no funciona en Expo Go: hace falta un *development build* o el APK.
+
+## Pruebas
+
+```bash
+npm test             # lógica de dominio y catálogo (Jest)
+npm run typecheck    # TypeScript estricto
+npx expo lint
+node supabase/tests/rls.test.mjs   # seguridad de la base de datos
+```
+
+## Actualizar el catálogo del súper
+
+`scripts/catalog/` contiene el proceso: OCR de capturas de la web de la cadena (modelo latino de PaddleOCR en ONNX, conserva tildes) → detección de tarjetas de producto (nombre, formato, precio, precio tachado, €/ud, €/pack, €/kg) → JSON compacto con categoría de HomeStock. Cada catálogo lleva su fecha; el comparador descarta precios más antiguos que el límite fijado en Ajustes.
+
+```bash
+pip install rapidocr-onnxruntime
+LATIN_REC=…/rec.onnx LATIN_DICT=…/dict.txt python3 scripts/catalog/ocr_latin.py capturas/ ocr.json
+python3 scripts/catalog/parse_caps.py ocr.json parsed.json
+python3 scripts/catalog/build_catalog.py assets/catalog/mercadona.json parsed.json
+```
+
+## Estructura
+
+```
+src/app/           pantallas (Expo Router)
+src/components/    UI (tema, botones, tarjetas, gráficas…)
+src/domain/        lógica pura y probada (unidades, caducidad, OCR, ticket, comparador, estadísticas)
+src/data/          acceso a SQLite (inventario, listas, compras, precios)
+src/db/            esquema, migraciones y consultas en vivo
+src/services/      notificaciones, sincronización, auth, catálogos, OCR, precios
+modules/homestock-ocr/  módulo nativo Android (ML Kit)
+supabase/          SQL con RLS, Edge Function y test de seguridad
+assets/catalog/    catálogos de supermercado incluidos
+```
+
+## Privacidad (RGPD)
+
+Los datos viven en el móvil. Con cuenta, se guardan en tu proyecto de Supabase (UE si eliges esa región) protegidos por RLS: cada hogar solo ve lo suyo. Las fotos de tickets y fechas se procesan en el dispositivo y no se suben. Desde Perfil → Privacidad puedes exportar tus datos y borrar la cuenta (borra también los datos del servidor).
+
+## Qué depende de servicios externos
+
+- Sin internet: inventario, listas, catálogo incluido, OCR, notificaciones y estadísticas funcionan.
+- Con internet: búsqueda/código de barras en Open Food Facts, Open Prices, geolocalización del CP, cuentas y sincronización.

@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Badge, Button, Card, Chip, Row, Screen, SectionTitle, Stepper, Text, TextField } from '@/components/ui';
-import { STORE_CHAINS } from '@/services/catalog/stores';
+import { formatDate } from '@/domain/dates';
+import { bundledCatalogInfo } from '@/services/catalog/bundled';
+import { STORE_CHAINS, storeName } from '@/services/catalog/stores';
 import { OFF_USER_AGENT } from '@/services/catalog/openFoodFacts';
 import { useSettings } from '@/services/settings';
 import { toast } from '@/services/toast';
@@ -103,6 +105,24 @@ export default function StoresSettings() {
           );
         })}
       </View>
+
+      <SectionTitle title="Catálogos incluidos" />
+      <Card style={{ gap: 6 }}>
+        {bundledCatalogInfo().map((c) => (
+          <View key={c.store} style={{ gap: 2 }}>
+            <Text variant="bodyStrong">
+              {storeName(c.store)} · {c.count.toLocaleString('es-ES')} productos
+            </Text>
+            <Text variant="caption" color="textMuted">
+              Precios del {formatDate(c.capturedAt)}
+              {c.ageDays > s.priceMaxAgeDays ? ' · más antiguos que tu límite: no se usan al comparar' : ''}
+            </Text>
+          </View>
+        ))}
+        <Text variant="caption" color="textFaint">
+          Sirven para buscar productos sin conexión y como precio de referencia. Siempre se muestran con su fecha; tus tickets y precios manuales tienen prioridad por ser más recientes.
+        </Text>
+      </Card>
 
       <SectionTitle title="Antigüedad de los precios" />
       <Card style={{ gap: 6 }}>
