@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.homestockocr'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.homestockocr"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // Modelo de OCR latino empaquetado en la app: funciona sin conexión y sin Google Play Services.
+  implementation 'com.google.mlkit:text-recognition:16.0.1'
+}
