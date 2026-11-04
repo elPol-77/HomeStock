@@ -145,7 +145,7 @@ export default function Profile() {
         </Text>
       </Pressable>
       <Text variant="caption" color="textFaint" align="center">
-        HomeStock {Constants.expoConfig?.version ?? ''} · Datos de productos: Open Food Facts (ODbL) · Precios comunitarios: Open Prices (ODbL)
+        HomeStock {Constants.expoConfig?.version ?? ''} · Datos y fotos de productos: Open Food Facts (ODbL · CC BY-SA) · Precios comunitarios: Open Prices (ODbL)
       </Text>
       <Button title="Volver a ver la bienvenida" variant="ghost" size="sm" onPress={() => s.update({ onboarded: false })} />
     </Screen>

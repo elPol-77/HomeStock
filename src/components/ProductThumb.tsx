@@ -27,9 +27,15 @@ export function CategoryBadge({ category, size = 40 }: { category: string | null
 }
 
 /** Resuelve una imagen guardada como texto: URL normal o foto incluida en la app ("bundled:<id>"). */
-export function imageSource(uri: string | null | undefined): number | { uri: string } | null {
+/**
+ * Origen de la foto: las incluidas en la app («bundled:<id>») salen al instante.
+ * Para las de Open Food Facts en miniatura pedimos la versión de 200 px (la de 400 pesa el doble
+ * y su servidor es lento); en tamaños grandes se mantiene la de 400.
+ */
+export function imageSource(uri: string | null | undefined, size = 52): number | { uri: string } | null {
   if (!uri) return null;
   if (uri.startsWith('bundled:')) return BUNDLED_IMAGES[uri.slice(8)] ?? null;
+  if (size <= 80 && uri.includes('images.openfoodfacts.org')) return { uri: uri.replace(/\.(400|full)\.jpg$/, '.200.jpg') };
   return { uri };
 }
 
@@ -43,7 +49,7 @@ export const ProductThumb = memo(function ProductThumb({ uri, category, size = 5
   const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
   const r = size * 0.27;
-  const source = failed ? null : imageSource(uri);
+  const source = failed ? null : imageSource(uri, size);
   const local = typeof source === 'number';
   const tint = categoryTint(category);
   return (
