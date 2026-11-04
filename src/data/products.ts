@@ -39,7 +39,11 @@ const STOCK_SELECT = `
   WHERE p.deleted = 0 AND p.household_id = ?`;
 
 export async function listProductsWithStock(opts: { filter?: InventoryFilter; locationId?: string | null; search?: string; warnDays?: number } = {}): Promise<ProductWithStock[]> {
-  const rows = await all<ProductWithStock>(`${STOCK_SELECT} ORDER BY p.name COLLATE NOCASE`, [householdId()]);
+  // Productos añadidos a una lista desde el catálogo que nunca han entrado en casa: no son "agotados", aún no se tienen.
+  const rows = await all<ProductWithStock>(
+    `${STOCK_SELECT} AND NOT (p.source = 'catalog' AND NOT EXISTS (SELECT 1 FROM batches b WHERE b.product_id = p.id AND b.deleted = 0)) ORDER BY p.name COLLATE NOCASE`,
+    [householdId()],
+  );
   const search = opts.search?.trim().toLowerCase();
   const limit = addDays(todayISO(), opts.warnDays ?? 3);
   let out = rows;

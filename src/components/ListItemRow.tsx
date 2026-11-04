@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { radius } from '@/theme/tokens';
 
 import { ProductThumb } from './ProductThumb';
-import { IconButton, ScalePressable, Stepper, Text } from './ui';
+import { IconButton, Row, ScalePressable, Stepper, Text } from './ui';
 
 export function Checkbox({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) {
   const { colors, reduceMotion } = useTheme();
@@ -58,20 +58,24 @@ export const ListItemRow = memo(function ListItemRow({ item, mode }: { item: Lis
       }}>
       <Checkbox checked={checked} onToggle={() => setItemChecked(item.id, !checked)} label={`${item.name}${checked ? ', en el carro' : ''}`} />
       <ProductThumb uri={item.image_url} category={item.category} size={mode === 'shop' ? 56 : 40} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text variant={mode === 'shop' ? 'subheading' : 'bodyStrong'} numberOfLines={2} style={checked ? { textDecorationLine: 'line-through' } : undefined}>
-          {item.name}
-        </Text>
-        <Text variant="caption" color="textMuted" numberOfLines={1}>
-          {[item.brand, item.category, price != null ? `~${formatEuro(price * item.quantity)}` : null].filter(Boolean).join(' · ')}
-        </Text>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Row gap={4} style={{ alignItems: 'flex-start' }}>
+          <Text variant={mode === 'shop' ? 'subheading' : 'bodyStrong'} numberOfLines={2} style={[{ flex: 1 }, checked ? { textDecorationLine: 'line-through' } : null]}>
+            {item.name}
+          </Text>
+          {mode === 'edit' ? <IconButton icon="close" size={28} tone="plain" label={`Quitar ${item.name}`} onPress={() => removeListItem(item.id)} /> : null}
+        </Row>
+        <Row gap={8}>
+          <Text variant="caption" color="textMuted" numberOfLines={1} style={{ flex: 1 }}>
+            {price != null ? `~${formatEuro(price * item.quantity)}` : item.brand || ' '}
+          </Text>
+          {mode === 'edit' || !checked ? (
+            <Stepper size="sm" value={item.quantity} min={1} label={item.name} onChange={(v) => updateListItem(item.id, { quantity: v })} />
+          ) : (
+            <Text variant="bodyStrong">×{item.quantity}</Text>
+          )}
+        </Row>
       </View>
-      {mode === 'edit' || !checked ? (
-        <Stepper size="sm" value={item.quantity} min={1} label={item.name} onChange={(v) => updateListItem(item.id, { quantity: v })} />
-      ) : (
-        <Text variant="bodyStrong">×{item.quantity}</Text>
-      )}
-      {mode === 'edit' ? <IconButton icon="close" size={32} tone="plain" label={`Quitar ${item.name}`} onPress={() => removeListItem(item.id)} /> : null}
     </View>
   );
 });

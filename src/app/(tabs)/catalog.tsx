@@ -23,7 +23,7 @@ import { radius } from '@/theme/tokens';
 
 type Sort = 'relevance' | 'price' | 'unit';
 const SORTS: { value: Sort; label: string }[] = [
-  { value: 'relevance', label: 'Destacados' },
+  { value: 'relevance', label: 'Por sección' },
   { value: 'price', label: 'Precio' },
   { value: 'unit', label: '€/kg·L' },
 ];
@@ -175,7 +175,7 @@ export default function Catalog() {
           <Chip key={c.name} label={c.name} icon={c.icon as never} count={categoryCounts.get(c.name)} selected={category === c.name} onPress={() => setCategory(category === c.name ? null : c.name)} />
         ))}
       </ScrollView>
-      <Segmented options={SORTS} value={sort} onChange={setSort} />
+      <Segmented options={deferred.trim().length >= 2 ? [{ value: 'relevance' as Sort, label: 'Relevancia' }, ...SORTS.slice(1)] : SORTS} value={sort} onChange={setSort} />
       <ScalePressable
         accessibilityRole="button"
         accessibilityLabel={`Añadiendo a ${target?.name ?? 'Compra semanal'}. Cambiar lista`}
