@@ -23,11 +23,11 @@ const NOTE =
 
 export const STORE_CHAINS: StoreChainInfo[] = [
   { id: 'mercadona', name: 'Mercadona', color: '#1E8A4C', priority: 1, connector: 'bundled', connectorNote: 'Catálogo incluido en la app (nombre, formato y precio de su web, con fecha). Sin conexión y sin cuenta.', aliases: ['mercadona'] },
-  { id: 'consum', name: 'Consum', color: '#F28C00', priority: 2, connector: 'no_public_api', connectorNote: NOTE, aliases: ['consum', 'charter'] },
+  { id: 'consum', name: 'Consum', color: '#F28C00', priority: 2, connector: 'bundled', connectorNote: 'Catálogo incluido en la app (páginas públicas de su tienda online, con fecha).', aliases: ['consum', 'charter'] },
   { id: 'lidl', name: 'Lidl', color: '#0050AA', priority: 3, connector: 'no_public_api', connectorNote: NOTE, aliases: ['lidl'] },
   { id: 'carrefour', name: 'Carrefour', color: '#1E5BC6', priority: 4, connector: 'no_public_api', connectorNote: NOTE, aliases: ['carrefour', 'carrefour market', 'carrefour express'] },
   { id: 'alcampo', name: 'Alcampo', color: '#E3001B', priority: 5, connector: 'no_public_api', connectorNote: NOTE, aliases: ['alcampo', 'auchan', 'mi alcampo'] },
-  { id: 'dia', name: 'DIA', color: '#E30613', priority: 6, connector: 'planned', connectorNote: NOTE, aliases: ['dia', 'dia&go', 'la plaza de dia'] },
+  { id: 'dia', name: 'DIA', color: '#E30613', priority: 6, connector: 'bundled', connectorNote: 'Catálogo parcial incluido en la app (básicos de su web pública, con fecha).', aliases: ['dia', 'dia&go', 'la plaza de dia'] },
   { id: 'aldi', name: 'Aldi', color: '#00005F', priority: 7, connector: 'planned', connectorNote: NOTE, aliases: ['aldi'] },
   { id: 'eroski', name: 'Eroski', color: '#D7001D', priority: 8, connector: 'planned', connectorNote: NOTE, aliases: ['eroski', 'caprabo'] },
   { id: 'hipercor', name: 'El Corte Inglés / Hipercor', color: '#00733C', priority: 9, connector: 'planned', connectorNote: NOTE, aliases: ['hipercor', 'el corte ingles', 'supercor'] },

@@ -46,6 +46,7 @@ interface RawCatalog {
 const CATALOGS: RawCatalog[] = [
   require('../../../assets/catalog/mercadona.json') as RawCatalog,
   require('../../../assets/catalog/dia.json') as RawCatalog,
+  require('../../../assets/catalog/consum.json') as RawCatalog,
   // CATALOG_SLOT (no borrar: lo usa scripts/catalog para registrar catálogos)
 ];
 
